@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "declaration": true,
+    "strict": true,
+    "lib": ["es6"],
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "outDir": "../dist",
+    "sourceMap": true,
+    "target": "es2017",
+    "preserveWatchOutput": true
+  },
+  "include": ["."]
+}
