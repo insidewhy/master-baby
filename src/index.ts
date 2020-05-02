@@ -1,6 +1,6 @@
 import App, { Context } from 'koa'
 import koaStatic from 'koa-static'
-import websockify from 'koa-websocket'
+import * as KoaWebsocket from 'koa-websocket'
 import { join as pathJoin } from 'path'
 import { readdir } from 'fs-extra'
 import { spawn, ChildProcess } from 'child_process'
@@ -9,12 +9,14 @@ const port = 4921
 const showsDir = `${process.env.HOME}/shows`
 
 let running: ChildProcess | undefined
+let watching: string | undefined
 
 async function sendShows(ctxt: Context) {
   const shows = await readdir(showsDir)
   ctxt.websocket.send(
     JSON.stringify({
       type: 'shows',
+      watching,
       list: shows.filter(
         (show) => !show.startsWith('.') && !show.startsWith('doit'),
       ),
@@ -22,29 +24,43 @@ async function sendShows(ctxt: Context) {
   )
 }
 
-async function listenToSocket(ctxt: Context) {
+function broadcast(app: KoaWebsocket.App, data: object) {
+  const dataStr = JSON.stringify(data)
+  app.ws.server?.clients.forEach((client) => {
+    client.send(dataStr)
+  })
+}
+
+function watchShow(app: KoaWebsocket.App, show: string) {
+  const showFullPath = pathJoin(showsDir, show)
+
+  if (running) {
+    running.kill()
+  }
+
+  broadcast(app, { type: 'start', show })
+  watching = show
+  running = spawn('babies', ['n', showFullPath], {
+    stdio: 'inherit',
+  })
+
+  running.on('exit', () => {
+    console.log('show finished')
+    broadcast(app, { type: 'stop', show })
+    running = undefined
+    watching = undefined
+  })
+}
+
+async function listenToSocket(app: KoaWebsocket.App, ctxt: Context) {
   ctxt.websocket.onmessage = (message) => {
-    const show = pathJoin(showsDir, message.data.toString())
-
-    if (running) {
-      running.kill()
-    } else {
-      running = spawn('babies', ['n', show], {
-        stdio: 'inherit',
-      })
-
-      running.on('exit', () => {
-        console.log('show finished')
-        running = undefined
-      })
-    }
-    console.log('TODO: show', show)
-    // TODO: show show
+    const show = message.data.toString()
+    watchShow(app, show)
   }
 }
 
 async function main(): Promise<void> {
-  const app = websockify(new App())
+  const app = KoaWebsocket.default(new App())
   app.use(koaStatic(pathJoin(__dirname, '..', '/public')))
   app.listen(port, () => {
     console.log(`server listening on http://localhost:${port}`)
@@ -53,7 +69,7 @@ async function main(): Promise<void> {
   app.ws.use((ctxt, next) => {
     console.debug('got websocket')
     sendShows(ctxt)
-    listenToSocket(ctxt)
+    listenToSocket(app, ctxt)
     return next()
   })
 }

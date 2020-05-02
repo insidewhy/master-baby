@@ -1,20 +1,20 @@
 const start = () => {
   const ws = new WebSocket('ws://' + window.location.host)
 
-  let ignore = false
+  let closed = false
   const showList = document.querySelector('#shows')
 
   const timeoutAttempt = setTimeout(() => {
-    if (!ignore) {
+    if (!closed) {
       console.log('took too long to open websocket, trying again')
-      ignore = true
+      closed = true
       ws.close()
       start()
     }
   }, 1000)
 
   ws.onopen = () => {
-    if (ignore) {
+    if (closed) {
       console.log('ignoring duplicate websocket connection')
       ws.close()
     } else {
@@ -24,22 +24,55 @@ const start = () => {
   }
 
   ws.onclose = () => {
-    if (!ignore) {
+    if (!closed) {
       console.log('websocket closed, trying again')
       setTimeout(start, 1000)
-      ignore = true
+      closed = true
     }
   }
 
   ws.onmessage = (message) => {
     const data = JSON.parse(message.data)
-    showList.innerHTML = ''
-    if (data.type === 'shows') {
-      data.list.forEach((show) => {
-        const li = document.createElement('li')
-        li.textContent = show
-        showList.appendChild(li)
-      })
+    switch (data.type) {
+      case 'shows':
+        {
+          showList.innerHTML = ''
+          const { watching } = data
+          data.list.forEach((show) => {
+            const li = document.createElement('li')
+            li.textContent = show
+            if (show === watching) {
+              li.className = 'watching'
+            }
+            showList.appendChild(li)
+          })
+        }
+        break
+
+      case 'start':
+        {
+          const { show } = data
+          Array.from(showList.children).forEach((li) => {
+            if (li.textContent === show) {
+              li.className = 'watching'
+            }
+          })
+        }
+        break
+
+      case 'stop':
+        {
+          const { show } = data
+          Array.from(showList.children).forEach((li) => {
+            if (li.textContent === show) {
+              li.className = ''
+            }
+          })
+        }
+        break
+
+      default:
+        console.warn('Got unrecognised message', data)
     }
   }
 
