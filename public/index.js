@@ -83,7 +83,7 @@ const start = () => {
           pathToFilename.clear()
           showList.innerHTML = ''
 
-          watchingPath = data
+          watchingPath = data.watchingPath
           data.list.forEach(({ path, filename }) => {
             filenameToPath.set(filename, path)
             pathToFilename.set(path, filename)
