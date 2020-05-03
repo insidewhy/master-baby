@@ -9,7 +9,7 @@ const port = 4921
 const showsDir = `${process.env.HOME}/shows`
 
 let running: ChildProcess | undefined
-let watching: string | undefined
+let watchingPath: string | undefined
 
 const run = (cmd: string) =>
   new Promise<string>((resolve, reject) => {
@@ -31,8 +31,11 @@ async function sendShows(ctxt: Context) {
   ctxt.websocket.send(
     JSON.stringify({
       type: 'shows',
-      watching,
-      list: shows.map((show) => basename(show.path)),
+      watchingPath,
+      list: shows.map((show) => ({
+        path: basename(show.path),
+        filename: basename(show.filename),
+      })),
     }),
   )
 }
@@ -44,31 +47,31 @@ function broadcast(app: KoaWebsocket.App, data: object) {
   })
 }
 
-function watchShow(app: KoaWebsocket.App, show: string) {
-  const showFullPath = pathJoin(showsDir, show)
+function watchShow(app: KoaWebsocket.App, path: string) {
+  const showFullPath = pathJoin(showsDir, path)
 
   if (running) {
     running.kill()
   }
 
-  broadcast(app, { type: 'start', show })
-  watching = show
+  broadcast(app, { type: 'start', path })
+  watchingPath = path
   running = spawn('babies', ['n', showFullPath], {
     stdio: 'inherit',
   })
 
   running.on('exit', () => {
     console.log('show finished')
-    broadcast(app, { type: 'stop', show })
+    broadcast(app, { type: 'stop', path })
     running = undefined
-    watching = undefined
+    watchingPath = undefined
   })
 }
 
 async function listenToSocket(app: KoaWebsocket.App, ctxt: Context) {
   ctxt.websocket.onmessage = (message) => {
-    const show = message.data.toString()
-    watchShow(app, show)
+    const path = message.data.toString()
+    watchShow(app, path)
   }
 }
 

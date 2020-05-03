@@ -1,3 +1,6 @@
+const pathToFilename = new Map()
+const filenameToPath = new Map()
+
 const start = () => {
   const ws = new WebSocket('ws://' + window.location.host)
 
@@ -36,12 +39,18 @@ const start = () => {
     switch (data.type) {
       case 'shows':
         {
+          filenameToPath.clear()
+          pathToFilename.clear()
+
           showList.innerHTML = ''
-          const { watching } = data
-          data.list.forEach((show) => {
+          const { watchingPath } = data
+          data.list.forEach(({ path, filename }) => {
+            filenameToPath.set(filename, path)
+            pathToFilename.set(path, filename)
+
             const li = document.createElement('li')
-            li.textContent = show
-            if (show === watching) {
+            li.textContent = filename
+            if (path === watchingPath) {
               li.className = 'watching'
             }
             showList.appendChild(li)
@@ -51,9 +60,9 @@ const start = () => {
 
       case 'start':
         {
-          const { show } = data
+          const filename = pathToFilename.get(data.path)
           Array.from(showList.children).forEach((li) => {
-            if (li.textContent === show) {
+            if (li.textContent === filename) {
               li.className = 'watching'
             }
           })
@@ -62,9 +71,9 @@ const start = () => {
 
       case 'stop':
         {
-          const { show } = data
+          const filename = pathToFilename.get(data.path)
           Array.from(showList.children).forEach((li) => {
-            if (li.textContent === show) {
+            if (li.textContent === filename) {
               li.className = ''
             }
           })
@@ -77,7 +86,8 @@ const start = () => {
   }
 
   showList.onclick = ({ target }) => {
-    ws.send(target.textContent)
+    const path = filenameToPath.get(target.textContent)
+    ws.send(path)
   }
 }
 
