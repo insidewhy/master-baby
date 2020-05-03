@@ -4,6 +4,10 @@ const filenameToPath = new Map()
 const start = () => {
   const ws = new WebSocket('ws://' + window.location.host)
 
+  const sendMessage = (message) => {
+    ws.send(JSON.stringify(message))
+  }
+
   let closed = false
   const showList = document.querySelector('#shows')
 
@@ -41,8 +45,8 @@ const start = () => {
         {
           filenameToPath.clear()
           pathToFilename.clear()
-
           showList.innerHTML = ''
+
           const { watchingPath } = data
           data.list.forEach(({ path, filename }) => {
             filenameToPath.set(filename, path)
@@ -77,6 +81,8 @@ const start = () => {
               li.className = ''
             }
           })
+          // TODO: only refresh show that stopped
+          sendMessage({ type: 'showList' })
         }
         break
 
@@ -87,7 +93,7 @@ const start = () => {
 
   showList.onclick = ({ target }) => {
     const path = filenameToPath.get(target.textContent)
-    ws.send(path)
+    sendMessage({ type: 'watch', path })
   }
 }
 

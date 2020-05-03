@@ -22,7 +22,7 @@ const run = (cmd: string) =>
     })
   })
 
-async function sendShows(ctxt: Context) {
+async function sendShowList(ctxt: Context) {
   const babiesOutput = await run(`babies p -vi ${showsDir}/*`)
   const shows: Array<{ filename: string; path: string }> = yaml.parse(
     babiesOutput,
@@ -70,8 +70,20 @@ function watchShow(app: KoaWebsocket.App, path: string) {
 
 async function listenToSocket(app: KoaWebsocket.App, ctxt: Context) {
   ctxt.websocket.onmessage = (message) => {
-    const path = message.data.toString()
-    watchShow(app, path)
+    const payload = JSON.parse(message.data.toString())
+    switch (payload.type) {
+      case 'watch':
+        const { path } = payload
+        watchShow(app, path)
+        break
+
+      case 'showList':
+        sendShowList(ctxt)
+        break
+
+      default:
+        console.warn('Unrecognised message %O', payload)
+    }
   }
 }
 
@@ -84,7 +96,7 @@ async function main(): Promise<void> {
 
   app.ws.use((ctxt, next) => {
     console.debug('got websocket')
-    sendShows(ctxt)
+    sendShowList(ctxt)
     listenToSocket(app, ctxt)
     return next()
   })
