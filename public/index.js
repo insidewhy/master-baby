@@ -84,6 +84,10 @@ const start = () => {
           showList.innerHTML = ''
 
           watchingPath = data.watchingPath
+          if (watchingPath) {
+            setDisableState(false)
+          }
+
           data.list.forEach(({ path, filename }) => {
             filenameToPath.set(filename, path)
             pathToFilename.set(path, filename)
