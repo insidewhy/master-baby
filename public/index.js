@@ -1,13 +1,16 @@
 const pathToFilename = new Map()
 const filenameToPath = new Map()
 
-isSetup = false
+let isSetup = false
 let showList
 let watchingPath
+let openedWs
 const watchingDisable = []
 
 const sendMessage = (ws, message) => {
-  ws.send(JSON.stringify(message))
+  if (ws) {
+    ws.send(JSON.stringify(message))
+  }
 }
 
 const setDisableState = (disabled) => {
@@ -16,25 +19,25 @@ const setDisableState = (disabled) => {
   })
 }
 
-const setup = (ws) => {
+const setup = () => {
   if (isSetup) return
   isSetup = true
   showList = document.querySelector('#shows')
 
   showList.onclick = ({ target }) => {
     const path = filenameToPath.get(target.textContent)
-    sendMessage(ws, { type: 'watch', path })
+    sendMessage(openedWs, { type: 'watch', path })
   }
 
   const volumeUp = document.querySelector('#volume-up')
   const volumeDown = document.querySelector('#volume-down')
 
   volumeUp.onclick = () => {
-    sendMessage(ws, { type: 'volume-up' })
+    sendMessage(openedWs, { type: 'volume-up' })
   }
 
   volumeDown.onclick = () => {
-    sendMessage(ws, { type: 'volume-down' })
+    sendMessage(openedWs, { type: 'volume-down' })
   }
 
   watchingDisable.length = 0
@@ -62,12 +65,17 @@ const start = () => {
     } else {
       clearTimeout(timeoutAttempt)
       console.log('got websocket')
-      setup(ws)
+      openedWs = ws
+      setup()
     }
   }
 
   ws.onclose = () => {
     if (!closed) {
+      if (ws === openedWs) {
+        openedWs = undefined
+      }
+      setDisableState(true)
       console.log('websocket closed, trying again')
       setTimeout(start, 1000)
       closed = true
