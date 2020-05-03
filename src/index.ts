@@ -1,9 +1,9 @@
 import App, { Context } from 'koa'
 import koaStatic from 'koa-static'
 import * as KoaWebsocket from 'koa-websocket'
-import { join as pathJoin } from 'path'
-import { readdir } from 'fs-extra'
-import { spawn, ChildProcess } from 'child_process'
+import { join as pathJoin, basename } from 'path'
+import { spawn, exec, ChildProcess } from 'child_process'
+import yaml from 'yaml'
 
 const port = 4921
 const showsDir = `${process.env.HOME}/shows`
@@ -11,15 +11,28 @@ const showsDir = `${process.env.HOME}/shows`
 let running: ChildProcess | undefined
 let watching: string | undefined
 
+const run = (cmd: string) =>
+  new Promise<string>((resolve, reject) => {
+    exec(cmd, (error, stdout, stderr) => {
+      if (error) {
+        reject(stderr)
+      } else {
+        resolve(stdout)
+      }
+    })
+  })
+
 async function sendShows(ctxt: Context) {
-  const shows = await readdir(showsDir)
+  const babiesOutput = await run(`babies p -vi ${showsDir}/*`)
+  const shows: Array<{ filename: string; path: string }> = yaml.parse(
+    babiesOutput,
+  )
+
   ctxt.websocket.send(
     JSON.stringify({
       type: 'shows',
       watching,
-      list: shows.filter(
-        (show) => !show.startsWith('.') && !show.startsWith('doit'),
-      ),
+      list: shows.map((show) => basename(show.path)),
     }),
   )
 }
