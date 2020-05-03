@@ -1,22 +1,57 @@
 const pathToFilename = new Map()
 const filenameToPath = new Map()
 
+isSetup = false
+let showList
+let watchingPath
+const watchingDisable = []
+
+const sendMessage = (ws, message) => {
+  ws.send(JSON.stringify(message))
+}
+
+const setDisableState = (disabled) => {
+  watchingDisable.forEach((node) => {
+    node.disabled = disabled
+  })
+}
+
+const setup = (ws) => {
+  if (isSetup) return
+  isSetup = true
+  showList = document.querySelector('#shows')
+
+  showList.onclick = ({ target }) => {
+    const path = filenameToPath.get(target.textContent)
+    sendMessage(ws, { type: 'watch', path })
+  }
+
+  const volumeUp = document.querySelector('#volume-up')
+  const volumeDown = document.querySelector('#volume-down')
+
+  volumeUp.onclick = () => {
+    sendMessage(ws, { type: 'volume-up' })
+  }
+
+  volumeDown.onclick = () => {
+    sendMessage(ws, { type: 'volume-down' })
+  }
+
+  watchingDisable.length = 0
+  watchingDisable.push(volumeUp, volumeDown)
+  setDisableState(true)
+}
+
 const start = () => {
   const ws = new WebSocket('ws://' + window.location.host)
 
-  const sendMessage = (message) => {
-    ws.send(JSON.stringify(message))
-  }
-
   let closed = false
-  const showList = document.querySelector('#shows')
 
   const timeoutAttempt = setTimeout(() => {
     if (!closed) {
       console.log('took too long to open websocket, trying again')
       closed = true
       ws.close()
-      start()
     }
   }, 1000)
 
@@ -27,6 +62,7 @@ const start = () => {
     } else {
       clearTimeout(timeoutAttempt)
       console.log('got websocket')
+      setup(ws)
     }
   }
 
@@ -47,7 +83,7 @@ const start = () => {
           pathToFilename.clear()
           showList.innerHTML = ''
 
-          const { watchingPath } = data
+          watchingPath = data
           data.list.forEach(({ path, filename }) => {
             filenameToPath.set(filename, path)
             pathToFilename.set(path, filename)
@@ -70,11 +106,13 @@ const start = () => {
               li.className = 'watching'
             }
           })
+          setDisableState(false)
         }
         break
 
       case 'stop':
         {
+          watchingPath = undefined
           const filename = pathToFilename.get(data.path)
           Array.from(showList.children).forEach((li) => {
             if (li.textContent === filename) {
@@ -82,18 +120,14 @@ const start = () => {
             }
           })
           // TODO: only refresh show that stopped
-          sendMessage({ type: 'showList' })
+          sendMessage(ws, { type: 'show-list' })
+          setDisableState(true)
         }
         break
 
       default:
         console.warn('Got unrecognised message', data)
     }
-  }
-
-  showList.onclick = ({ target }) => {
-    const path = filenameToPath.get(target.textContent)
-    sendMessage({ type: 'watch', path })
   }
 }
 

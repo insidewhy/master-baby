@@ -57,7 +57,7 @@ function watchShow(app: KoaWebsocket.App, path: string) {
   broadcast(app, { type: 'start', path })
   watchingPath = path
   running = spawn('babies', ['n', showFullPath], {
-    stdio: 'inherit',
+    stdio: ['pipe', 'inherit', 'inherit'],
   })
 
   running.on('exit', () => {
@@ -77,12 +77,20 @@ async function listenToSocket(app: KoaWebsocket.App, ctxt: Context) {
         watchShow(app, path)
         break
 
-      case 'showList':
+      case 'show-list':
         sendShowList(ctxt)
         break
 
+      case 'volume-up':
+        running?.stdin?.write('0\n')
+        break
+
+      case 'volume-down':
+        running?.stdin?.write('9\n')
+        break
+
       default:
-        console.warn('Unrecognised message %O', payload)
+        console.warn('Unrecognised message type %O', payload)
     }
   }
 }
