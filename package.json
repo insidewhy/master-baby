@@ -5,7 +5,13 @@
   "license": "MIT",
   "scripts": {
     "start": "ts-node src/index.ts",
-    "dev": "nodemon -e ts --watch src --delay 0.3 --exec yarn start"
+    "dev": "nodemon -e ts --watch src --delay 0.3 --exec yarn start",
+    "lint": "eslint 'src/*.ts'",
+    "lint-fix": "yarn lint --fix",
+    "run-prettier": "prettier 'src/*.ts' 'public/*.js'",
+    "validate-prettiness": "yarn run-prettier -c",
+    "make-prettier": "yarn run-prettier --write",
+    "validate": "yarn lint && yarn validate-prettiness"
   },
   "dependencies": {
     "@types/koa": "^2.11.3",
@@ -14,11 +20,16 @@
     "koa": "^2.11.0",
     "koa-static": "^5.0.0",
     "koa-websocket": "^6.0.0",
-    "ts-node": "^8.9.1"
+    "ts-node": "^8.9.1",
+    "yaml": "^1.9.2"
   },
   "devDependencies": {
     "@types/fs-extra": "^8.1.0",
     "@types/koa-websocket": "^5.0.4",
+    "@typescript-eslint/eslint-plugin": "2.28.0",
+    "@typescript-eslint/parser": "2.28.0",
+    "eslint": "6.8.0",
+    "eslint-config-prettier": "6.10.1",
     "nodemon": "^2.0.3",
     "prettier": "^2.0.5",
     "typescript": "^3.8.3"
