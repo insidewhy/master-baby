@@ -52,13 +52,24 @@
       li.watching {
         background-color: #a92dce;
       }
-      aside {
+      footer {
         flex-shrink: 1;
-        align-items: center;
         padding: 1rem 1.5rem;
         height: 5rem;
       }
-      aside button {
+      footer >* {
+        height: 100%;
+        width: 100%;
+      }
+      #loading {
+        align-items: center;
+        justify-content: center;
+      }
+      #controls {
+        align-items: center;
+        display: none;
+      }
+      #controls button {
         height: 100%;
         font-size: 1rem;
         justify-content: center;
@@ -68,16 +79,21 @@
         flex-grow: 1;
         cursor: pointer;
       }
-      aside button + button {
+      #controls button + button {
         margin-left: 1rem;
       }
     </style>
   <body>
     <ul id="shows">
     </ul>
-    <aside>
-      <button id="volume-up">vol up</button>
-      <button id="volume-down">vol down</button>
-    </aside>
+    <footer>
+      <div id="loading">
+        Loading
+      </div>
+      <div id="controls">
+        <button id="volume-up">vol up</button>
+        <button id="volume-down">vol down</button>
+      </div>
+    </footer>
   </body>
 </html>

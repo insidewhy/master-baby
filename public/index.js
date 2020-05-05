@@ -5,6 +5,8 @@ let isSetup = false
 let showList
 let watchingPath
 let openedWs
+let loadingEl
+let controlsEl
 const watchingDisable = []
 
 const sendMessage = (ws, message) => {
@@ -59,6 +61,8 @@ const start = () => {
   }, 1000)
 
   ws.onopen = () => {
+    loadingEl.style.display = 'none'
+    controlsEl.style.display = 'flex'
     if (closed) {
       console.log('ignoring duplicate websocket connection')
       ws.close()
@@ -71,6 +75,8 @@ const start = () => {
   }
 
   ws.onclose = () => {
+    loadingEl.style.display = 'flex'
+    controlsEl.style.display = 'none'
     if (!closed) {
       if (ws === openedWs) {
         openedWs = undefined
@@ -143,4 +149,8 @@ const start = () => {
   }
 }
 
-window.onload = start
+window.onload = () => {
+  loadingEl = document.querySelector('#loading')
+  controlsEl = document.querySelector('#controls')
+  start()
+}
