@@ -38,27 +38,31 @@
         margin-top: 0.5rem;
       }
       li {
-        flex-grow: 1;
         width: 100%;
         align-items: center;
         word-break: break-word;
-        padding: 0.5rem 1rem;
+        padding: 0.8rem 1rem;
       }
       li:hover {
         cursor: pointer;
         background-color: #a2d9ce;
+      }
+      li {
+        border-bottom: #eee solid 1px;
       }
       li.watching {
         background-color: #a92dce;
       }
       footer {
         flex-shrink: 1;
-        padding: 1rem;
-        height: 5rem;
       }
       footer >* {
         height: 100%;
         width: 100%;
+      }
+      #loading, #controls {
+        padding: 1rem;
+        height: 5rem;
       }
       #loading {
         align-items: center;

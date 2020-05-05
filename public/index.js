@@ -62,7 +62,6 @@ const start = () => {
 
   ws.onopen = () => {
     loadingEl.style.display = 'none'
-    controlsEl.style.display = 'flex'
     if (closed) {
       console.log('ignoring duplicate websocket connection')
       ws.close()
@@ -100,6 +99,7 @@ const start = () => {
           watchingPath = data.watchingPath
           if (watchingPath) {
             setDisableState(false)
+            controlsEl.style.display = 'flex'
           }
 
           data.list.forEach(({ path, filename }) => {
@@ -125,6 +125,7 @@ const start = () => {
             }
           })
           setDisableState(false)
+          controlsEl.style.display = 'flex'
         }
         break
 
@@ -140,6 +141,7 @@ const start = () => {
           // TODO: only refresh show that stopped
           sendMessage(ws, { type: 'show-list' })
           setDisableState(true)
+          controlsEl.style.display = 'none'
         }
         break
 
