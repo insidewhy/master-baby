@@ -48,6 +48,14 @@ function broadcast(app: KoaWebsocket.App, data: object) {
 }
 
 function watchShow(app: KoaWebsocket.App, path: string) {
+  if (path === watchingPath) {
+    if (running) {
+      // pause/resume
+      running?.stdin?.write('p\n')
+    }
+    return
+  }
+
   const showFullPath = pathJoin(showsDir, path)
 
   if (running) {
