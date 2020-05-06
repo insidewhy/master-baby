@@ -2,25 +2,25 @@
   import FaVolumeDown from 'svelte-icons/fa/FaVolumeDown.svelte'
   import FaVolumeUp from 'svelte-icons/fa/FaVolumeUp.svelte'
 
-  let openedWs
+  let ws
   let watchingPath
   let showList = []
 
-  const sendMessage = (ws, message) => {
+  const sendMessage = (message) => {
     if (ws) {
       ws.send(JSON.stringify(message))
     }
   }
 
   const startShow = path => {
-    sendMessage(openedWs, { type: 'watch', path })
+    sendMessage({ type: 'watch', path })
   }
 
   const sendMessageWithType = type => {
-    sendMessage(openedWs, { type })
+    sendMessage({ type })
   }
 
-  const handleWebsocketMessage = (ws, message) => {
+  const handleWebsocketMessage = (message) => {
     const data = JSON.parse(message.data)
     switch (data.type) {
       case 'shows':
@@ -35,7 +35,7 @@
       case 'stop':
         watchingPath = undefined
         // TODO: only refresh show that stopped
-        sendMessage(ws, { type: 'show-list' })
+        sendMessage({ type: 'show-list' })
         break
 
       default:
@@ -44,7 +44,7 @@
   }
 
   const start = () => {
-    const ws = new WebSocket(`ws://${window.location.hostname}:4920`)
+    const connectingWs = new WebSocket(`ws://${window.location.hostname}:4920`)
 
     let closed = false
 
@@ -52,27 +52,27 @@
       if (!closed) {
         console.log('took too long to open websocket, trying again')
         closed = true
-        ws.close()
+        connectingWs.close()
         start()
       }
     }, 3000)
 
-    ws.onopen = () => {
+    connectingWs.onopen = () => {
       if (closed) {
         console.log('ignoring duplicate websocket connection')
-        ws.close()
+        connectingWs.close()
       } else {
         clearTimeout(timeoutAttempt)
         console.log('got websocket')
-        openedWs = ws
+        ws = connectingWs
       }
     }
 
-    ws.onclose = () => {
+    connectingWs.onclose = () => {
       if (!closed) {
-        if (ws === openedWs) {
+        if (connectingWs === ws) {
           watchingPath = undefined
-          openedWs = undefined
+          ws = undefined
         }
         console.log('websocket closed, trying again')
         setTimeout(start, 1000)
@@ -80,7 +80,7 @@
       }
     }
 
-    ws.onmessage = handleWebsocketMessage.bind(null, ws)
+    connectingWs.onmessage = handleWebsocketMessage
   }
 
   start()
@@ -169,7 +169,7 @@
   {/each}
 </ul>
 <footer>
-  {#if !openedWs}
+  {#if !ws}
     <div id="loading">
       Loading
     </div>
