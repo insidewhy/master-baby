@@ -83,15 +83,19 @@ function watchShow(app: KoaWebsocket.App, path: string, showsDir: string) {
 
   broadcast(app, { type: 'start', path })
   watchingPath = path
-  running = spawn('babies', ['n', showFullPath], {
+  const thisRun = (running = spawn('babies', ['n', showFullPath], {
     stdio: ['pipe', 'inherit', 'inherit'],
-  })
+  }))
 
   running.on('exit', () => {
-    console.log('show finished')
-    broadcast(app, { type: 'stop', path })
-    running = undefined
-    watchingPath = undefined
+    if (running === thisRun) {
+      console.log('show finished')
+      broadcast(app, { type: 'stop', path })
+      running = undefined
+      watchingPath = undefined
+    } else {
+      console.log('switched shows')
+    }
   })
 }
 
