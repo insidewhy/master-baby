@@ -40,6 +40,23 @@ async function sendShowList(ctxt: Context, showsDir: string) {
   )
 }
 
+async function sendSearch(ctxt: Context, searchTerms: string) {
+  const babiesOutput = await run(`babies syt ${searchTerms}`)
+  const results = yaml.parse(babiesOutput)
+
+  results.forEach((result: any) => {
+    result.url = `https://youtube.com/watch?v=${result.id}`
+    delete result.id
+  })
+
+  ctxt.websocket.send(
+    JSON.stringify({
+      type: 'search-results',
+      results,
+    }),
+  )
+}
+
 function broadcast(app: KoaWebsocket.App, data: object) {
   const dataStr = JSON.stringify(data)
   app.ws.server?.clients.forEach((client) => {
@@ -56,7 +73,9 @@ function watchShow(app: KoaWebsocket.App, path: string, showsDir: string) {
     return
   }
 
-  const showFullPath = pathJoin(showsDir, path)
+  const showFullPath = path.startsWith('https://')
+    ? path
+    : pathJoin(showsDir, path)
 
   if (running) {
     running.kill()
@@ -99,6 +118,11 @@ async function listenToSocket(
 
       case 'volume-down':
         running?.stdin?.write('9\n')
+        break
+
+      case 'search':
+        const { searchTerms } = payload
+        sendSearch(ctxt, searchTerms)
         break
 
       default:

@@ -1,15 +1,38 @@
 <script>
   import FaVolumeDown from 'svelte-icons/fa/FaVolumeDown.svelte'
   import FaVolumeUp from 'svelte-icons/fa/FaVolumeUp.svelte'
+  import FaSearch from 'svelte-icons/fa/FaSearch.svelte'
+  import FaTimes from 'svelte-icons/fa/FaTimes.svelte'
 
   let ws
+  let searching = false
   let watchingPath
   let showList = []
+  let searchTerms = ''
+  let searchResults = []
+
+  const focus = (el) => {
+    el.focus()
+  }
 
   const sendMessage = (message) => {
     if (ws) {
       ws.send(JSON.stringify(message))
     }
+  }
+
+  const openSearch = () => {
+    searching = true
+  }
+
+  const sendSearch = () => {
+    sendMessage({ type: 'search', searchTerms })
+    return false
+  }
+
+  const closeSearch = () => {
+    searching = false
+    searchResults = []
   }
 
   const startShow = path => {
@@ -26,6 +49,12 @@
       case 'shows':
         watchingPath = data.watchingPath
         showList = data.list
+        break
+
+      case 'search-results':
+        if (searching) {
+          searchResults = data.results
+        }
         break
 
       case 'start':
@@ -116,76 +145,93 @@
 
   footer {
     flex-shrink: 1;
-
-    > * {
-      height: 100%;
-      width: 100%;
-    }
-  }
-
-  #loading,
-  #controls {
     height: 5rem;
-  }
-
-  #loading {
-    align-items: center;
-    justify-content: center;
-  }
-
-  #controls {
     align-items: center;
     border-top: solid 1px #aaa;
+
+    form, .loading {
+      width: 100%;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+    }
 
     button {
       padding: 0.7rem;
       height: 100%;
+      width: 5rem;
+      flex-grow: 1;
       font-size: 1rem;
       justify-content: center;
       align-items: center;
       border: none;
       color: #888;
       background-color: white;
-      flex-grow: 1;
       cursor: pointer;
 
       &:hover {
         background-color: #eee;
       }
 
-      + button {
+      &:not(:first-child) {
         border-left: solid 1px #aaa;
       }
     }
   }
+
+  .search-terms {
+    flex-grow: 9;
+    border: none;
+    border-bottom: 1px solid #aaa;
+    font-size: 1rem;
+    margin: 0 1rem;
+
+    &:focus {
+      border-bottom-color: #333;
+    }
+  }
 </style>
 
-<ul id="shows">
-  {#each showList as show}
-    <li
-      on:click={() => { startShow(show.path) }}
-      class:watching={watchingPath === show.path}
-    >{show.filename}</li>
-  {/each}
+<ul>
+  {#if searchResults.length}
+    {#each searchResults as result}
+      <li
+        on:click={() => { startShow(result.url) }}
+        class:watching={watchingPath === result.url}
+      >{result.title}</li>
+    {/each}
+  {:else}
+    {#each showList as show}
+      <li
+        on:click={() => { startShow(show.path) }}
+        class:watching={watchingPath === show.path}
+      >{show.filename}</li>
+    {/each}
+  {/if}
 </ul>
 <footer>
   {#if !ws}
-    <div id="loading">
+    <div class="loading">
       Loading
     </div>
-  {/if}
-  {#if watchingPath}
-    <div id="controls">
-      <button
-        on:click={() => { sendMessageWithType("volume-down") }}
-      >
+  {:else}
+    {#if watchingPath}
+      <button on:click={() => { sendMessageWithType("volume-down") }}>
         <FaVolumeDown />
       </button>
-      <button
-        on:click={() => { sendMessageWithType("volume-up") }}
-      >
+      <button on:click={() => { sendMessageWithType("volume-up") }}>
         <FaVolumeUp />
       </button>
-    </div>
+    {:else}
+      {#if searching}
+        <form on:submit|preventDefault={sendSearch}>
+          <input class="search-terms" type="text" use:focus bind:value={searchTerms} />
+          <button type="submit"><FaSearch /></button>
+          <button on:click={closeSearch}><FaTimes /></button>
+        </form>
+      {:else}
+        <button on:click={openSearch}><FaSearch /></button>
+      {/if}
+    {/if}
   {/if}
 </footer>
