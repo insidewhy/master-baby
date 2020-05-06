@@ -172,10 +172,6 @@
       &:hover {
         background-color: #eee;
       }
-
-      &:not(:first-child) {
-        border-left: solid 1px #aaa;
-      }
     }
   }
 
