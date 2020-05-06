@@ -145,9 +145,13 @@
 
   footer {
     flex-shrink: 1;
-    height: 5rem;
     align-items: center;
     border-top: solid 1px #aaa;
+    height: 5rem;
+
+    @media only screen and (min-width: 600px) {
+      height: 3.5rem;
+    }
 
     form, .loading {
       width: 100%;
@@ -157,10 +161,10 @@
     }
 
     button {
-      padding: 0.7rem;
+      padding: 0.7rem 1.2rem;
       height: 100%;
-      width: 5rem;
       flex-grow: 1;
+      width: 7rem;
       font-size: 1rem;
       justify-content: center;
       align-items: center;
@@ -176,7 +180,8 @@
   }
 
   .search-terms {
-    flex-grow: 9;
+    flex-grow: 1;
+    width: 100%;
     border: none;
     border-bottom: 1px solid #aaa;
     font-size: 1rem;
