@@ -53,6 +53,7 @@
         console.log('took too long to open websocket, trying again')
         closed = true
         ws.close()
+        start()
       }
     }, 1000)
 
@@ -70,6 +71,7 @@
     ws.onclose = () => {
       if (!closed) {
         if (ws === openedWs) {
+          watchingPath = undefined
           openedWs = undefined
         }
         console.log('websocket closed, trying again')
