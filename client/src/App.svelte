@@ -55,7 +55,7 @@
         ws.close()
         start()
       }
-    }, 1000)
+    }, 3000)
 
     ws.onopen = () => {
       if (closed) {
