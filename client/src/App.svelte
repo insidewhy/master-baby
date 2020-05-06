@@ -86,7 +86,7 @@
   start()
 </script>
 
-<style>
+<style type="text/scss">
   ul {
     flex-grow: 1;
     width: 100%;
@@ -103,24 +103,24 @@
     word-break: break-word;
     padding: 0.8rem 1rem;
     border-bottom: #eee solid 1px;
-  }
 
-  li:hover {
-    cursor: pointer;
-    background-color: #a2d9ce;
-  }
+    &:hover {
+      cursor: pointer;
+      background-color: #a2d9ce;
+    }
 
-  li.watching {
-    background-color: #a92dce;
+    &.watching {
+      background-color: #a92dce;
+    }
   }
 
   footer {
     flex-shrink: 1;
-  }
 
-  footer > * {
-    height: 100%;
-    width: 100%;
+    > * {
+      height: 100%;
+      width: 100%;
+    }
   }
 
   #loading,
@@ -136,27 +136,27 @@
   #controls {
     align-items: center;
     border-top: solid 1px #aaa;
-  }
 
-  #controls button {
-    padding: 0.7rem;
-    height: 100%;
-    font-size: 1rem;
-    justify-content: center;
-    align-items: center;
-    border: none;
-    color: #888;
-    background-color: white;
-    flex-grow: 1;
-    cursor: pointer;
-  }
+    button {
+      padding: 0.7rem;
+      height: 100%;
+      font-size: 1rem;
+      justify-content: center;
+      align-items: center;
+      border: none;
+      color: #888;
+      background-color: white;
+      flex-grow: 1;
+      cursor: pointer;
 
-  #controls button:hover {
-    background-color: #eee;
-  }
+      &:hover {
+        background-color: #eee;
+      }
 
-  #controls button + button {
-    border-left: solid 1px #aaa;
+      + button {
+        border-left: solid 1px #aaa;
+      }
+    }
   }
 </style>
 
