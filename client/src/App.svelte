@@ -41,7 +41,7 @@
   }
 
   const start = () => {
-    const ws = new WebSocket('ws://localhost:4920')
+    const ws = new WebSocket(`ws://${window.location.hostname}:4920`)
 
     let closed = false
 
