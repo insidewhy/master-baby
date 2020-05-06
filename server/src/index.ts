@@ -6,7 +6,7 @@ import { spawn, exec, ChildProcess } from 'child_process'
 import yaml from 'yaml'
 
 const port = 4920
-const showsDir = `${process.env.HOME}/shows`
+const defaultShowsDir = `${process.env.HOME}/shows`
 
 let running: ChildProcess | undefined
 let watchingPath: string | undefined
@@ -22,7 +22,7 @@ const run = (cmd: string) =>
     })
   })
 
-async function sendShowList(ctxt: Context) {
+async function sendShowList(ctxt: Context, showsDir: string) {
   const babiesOutput = await run(`babies p -vi ${showsDir}/*`)
   const shows: Array<{ filename: string; path: string }> = yaml.parse(
     babiesOutput,
@@ -47,7 +47,7 @@ function broadcast(app: KoaWebsocket.App, data: object) {
   })
 }
 
-function watchShow(app: KoaWebsocket.App, path: string) {
+function watchShow(app: KoaWebsocket.App, path: string, showsDir: string) {
   if (path === watchingPath) {
     if (running) {
       // pause/resume
@@ -76,17 +76,21 @@ function watchShow(app: KoaWebsocket.App, path: string) {
   })
 }
 
-async function listenToSocket(app: KoaWebsocket.App, ctxt: Context) {
+async function listenToSocket(
+  app: KoaWebsocket.App,
+  ctxt: Context,
+  showsDir: string,
+) {
   ctxt.websocket.onmessage = (message) => {
     const payload = JSON.parse(message.data.toString())
     switch (payload.type) {
       case 'watch':
         const { path } = payload
-        watchShow(app, path)
+        watchShow(app, path, showsDir)
         break
 
       case 'show-list':
-        sendShowList(ctxt)
+        sendShowList(ctxt, showsDir)
         break
 
       case 'volume-up':
@@ -104,6 +108,7 @@ async function listenToSocket(app: KoaWebsocket.App, ctxt: Context) {
 }
 
 async function main(): Promise<void> {
+  const showsDir = process.argv[2] || defaultShowsDir
   const app = KoaWebsocket.default(new App())
   app.use(cors())
   app.listen(port, () => {
@@ -112,8 +117,8 @@ async function main(): Promise<void> {
 
   app.ws.use((ctxt, next) => {
     console.debug('got websocket')
-    sendShowList(ctxt)
-    listenToSocket(app, ctxt)
+    sendShowList(ctxt, showsDir)
+    listenToSocket(app, ctxt, showsDir)
     return next()
   })
 }
