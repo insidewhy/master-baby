@@ -1,4 +1,7 @@
 <script>
+  import FaVolumeDown from 'svelte-icons/fa/FaVolumeDown.svelte'
+  import FaVolumeUp from 'svelte-icons/fa/FaVolumeUp.svelte'
+
   let openedWs
   let watchingPath
   let showList = []
@@ -120,7 +123,6 @@
 
   #loading,
   #controls {
-    padding: 1rem;
     height: 5rem;
   }
 
@@ -131,21 +133,28 @@
 
   #controls {
     align-items: center;
+    border-top: solid 1px #aaa;
   }
 
   #controls button {
+    padding: 0.7rem;
     height: 100%;
     font-size: 1rem;
     justify-content: center;
     align-items: center;
-    border: 1px solid black;
+    border: none;
+    color: #888;
     background-color: white;
     flex-grow: 1;
     cursor: pointer;
   }
 
+  #controls button:hover {
+    background-color: #eee;
+  }
+
   #controls button + button {
-    margin-left: 1rem;
+    border-left: solid 1px #aaa;
   }
 </style>
 
@@ -167,10 +176,14 @@
     <div id="controls">
       <button
         on:click={() => { sendMessageWithType("volume-down") }}
-      >vol down</button>
+      >
+        <FaVolumeDown />
+      </button>
       <button
         on:click={() => { sendMessageWithType("volume-up") }}
-      >vol up</button>
+      >
+        <FaVolumeUp />
+      </button>
     </div>
   {/if}
 </footer>
