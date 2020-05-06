@@ -1,0 +1,26 @@
+html {
+  height: 100%;
+  font-size: 12pt;
+}
+
+@media only screen and (min-width: 600px) {
+  html {
+    font-size: 24pt;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body,
+body * {
+  display: flex;
+  margin: 0;
+  padding: 0;
+}
+body {
+  min-height: 100%;
+  max-height: 100%;
+  flex-direction: column;
+}

@@ -1,11 +1,12 @@
 import App, { Context } from 'koa'
 import koaStatic from 'koa-static'
+import cors from '@koa/cors'
 import * as KoaWebsocket from 'koa-websocket'
 import { join as pathJoin, basename } from 'path'
 import { spawn, exec, ChildProcess } from 'child_process'
 import yaml from 'yaml'
 
-const port = 4921
+const port = 4920
 const showsDir = `${process.env.HOME}/shows`
 
 let running: ChildProcess | undefined
@@ -64,7 +65,7 @@ function watchShow(app: KoaWebsocket.App, path: string) {
 
   broadcast(app, { type: 'start', path })
   watchingPath = path
-  running = spawn('babies', ['n', showFullPath], {
+  running = spawn('babies', ['d', showFullPath], {
     stdio: ['pipe', 'inherit', 'inherit'],
   })
 
@@ -105,6 +106,7 @@ async function listenToSocket(app: KoaWebsocket.App, ctxt: Context) {
 
 async function main(): Promise<void> {
   const app = KoaWebsocket.default(new App())
+  app.use(cors())
   app.use(koaStatic(pathJoin(__dirname, '..', '/public')))
   app.listen(port, () => {
     console.log(`server listening on http://localhost:${port}`)
