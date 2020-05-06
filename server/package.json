@@ -1,0 +1,26 @@
+{
+  "name": "master-baby-server",
+  "version": "1.0.0",
+  "main": "src/index.ts",
+  "license": "MIT",
+  "scripts": {
+    "start": "ts-node src/index.ts",
+    "dev": "nodemon -e ts --watch src --delay 0.3 --exec yarn start"
+  },
+  "dependencies": {
+    "@koa/cors": "^3.0.0",
+    "@types/koa": "^2.11.3",
+    "koa": "^2.11.0",
+    "koa-websocket": "^6.0.0",
+    "ts-node": "^8.9.1",
+    "yaml": "^1.9.2"
+  },
+  "devDependencies": {
+    "@types/fs-extra": "^8.1.0",
+    "@types/koa-websocket": "^5.0.4",
+    "@types/koa__cors": "^3.0.1",
+    "nodemon": "^2.0.3",
+    "typescript": "^3.8.3"
+  }
+}
+
