@@ -78,7 +78,7 @@ function watchShow(app: KoaWebsocket.App, path: string, showsDir: string) {
     : pathJoin(showsDir, path)
 
   if (running) {
-    running.kill()
+    running.stdin?.write('q\n')
   }
 
   broadcast(app, { type: 'start', path })
