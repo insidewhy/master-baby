@@ -1,4 +1,5 @@
 <script>
+  import { EventEmitter } from 'event-emitters'
   import FaVolumeDown from 'svelte-icons/fa/FaVolumeDown.svelte'
   import FaVolumeUp from 'svelte-icons/fa/FaVolumeUp.svelte'
   import FaSearch from 'svelte-icons/fa/FaSearch.svelte'
@@ -8,10 +9,10 @@
   let ws
   let watchingPath
   let showList = []
+  const onMessage = new EventEmitter()
 
   // search bind
   let searchOpen = false
-  let searching = false
   let searchResults = []
 
   const sendMessage = (message) => {
@@ -38,18 +39,12 @@
 
   const handleWebsocketMessage = (message) => {
     const data = JSON.parse(message.data)
+    onMessage.emit(data)
+
     switch (data.type) {
       case 'shows':
         watchingPath = data.watchingPath
         showList = data.list
-        break
-
-      case 'search-results':
-        // TODO: handle this inside Search
-        searching = false
-        if (searchOpen) {
-          searchResults = data.results
-        }
         break
 
       case 'start':
@@ -61,9 +56,6 @@
         // TODO: only refresh show that stopped
         sendMessage({ type: 'show-list' })
         break
-
-      default:
-        console.warn('Got unrecognised message', data)
     }
   }
 
@@ -213,7 +205,7 @@
       {#if searchOpen}
         <Search
           sendMessage={sendMessage}
-          bind:searching={searching}
+          onMessage={onMessage}
           bind:searchOpen={searchOpen}
           bind:searchResults={searchResults}
         />

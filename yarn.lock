@@ -437,6 +437,11 @@ esutils@^2.0.2:
   resolved "https://registry.yarnpkg.com/esutils/-/esutils-2.0.3.tgz#74d2eb4de0b8da1293711910d50775b9b710ef64"
   integrity sha512-kVscqXk4OCp68SZ0dkgEKVi6/8ij300KBWTJq32P/dYeWTSwK41WyTxalN1eRmA5Z9UU/LX9D7FWSmV9SAYx6g==
 
+event-emitters@^1.0.1:
+  version "1.0.1"
+  resolved "https://registry.yarnpkg.com/event-emitters/-/event-emitters-1.0.1.tgz#d859e442781b266cc68cabc8e79275687bad3514"
+  integrity sha512-WiPIorhFqEv5EDd+vg2xyT6/maa+8CRVJb8bArJkzNwDdg/C0hLno3bCaqfEtRcD6cwP649TkjHK8L85K4hEPg==
+
 external-editor@^3.0.3:
   version "3.1.0"
   resolved "https://registry.yarnpkg.com/external-editor/-/external-editor-3.1.0.tgz#cb03f740befae03ea4d283caed2741a83f335495"

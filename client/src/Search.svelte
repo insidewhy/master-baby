@@ -2,14 +2,23 @@
   import FaSearch from 'svelte-icons/fa/FaSearch.svelte'
   import FaTimes from 'svelte-icons/fa/FaTimes.svelte'
   import FaSpinner from 'svelte-icons/fa/FaSpinner.svelte'
+  import { handleMessages } from './handleMessages.js'
 
   export let sendMessage
   export let searchOpen
-  export let searching
   export let searchResults
+  export let onMessage
 
+  let searching = false
   let searchTerms = ''
   let searchDuration = 'any'
+
+  handleMessages(onMessage, (data) => {
+    if (data.type === 'search-results') {
+      searching = false
+      searchResults = data.results
+    }
+  })
 
   const focus = (el) => {
     el.focus()
