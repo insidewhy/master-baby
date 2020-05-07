@@ -11,7 +11,7 @@ const defaultShowsDir = `${process.env.HOME}/shows`
 let running: ChildProcess | undefined
 let watchingPath: string | undefined
 
-const run = (cmd: string) =>
+const runShell = (cmd: string) =>
   new Promise<string>((resolve, reject) => {
     exec(cmd, (error, stdout, stderr) => {
       if (error) {
@@ -22,8 +22,30 @@ const run = (cmd: string) =>
     })
   })
 
+const run = (cmdAndArgs: string[]) =>
+  new Promise<string>((resolve, reject) => {
+    const proc = spawn(cmdAndArgs[0], cmdAndArgs.slice(1))
+    let stdout = ''
+    let stderr = ''
+
+    proc.stdout.on('data', (data) => {
+      stdout += data
+    })
+    proc.stderr.on('data', (data) => {
+      stderr += data
+    })
+
+    proc.on('exit', (code) => {
+      if (!code) {
+        resolve(stdout)
+      } else {
+        reject(stderr)
+      }
+    })
+  })
+
 async function sendShowList(ctxt: Context, showsDir: string) {
-  const babiesOutput = await run(`babies p -vi ${showsDir}/*`)
+  const babiesOutput = await runShell(`babies p -vi ${showsDir}/*`)
   const shows: Array<{ filename: string; path: string }> = yaml.parse(
     babiesOutput,
   )
@@ -41,20 +63,29 @@ async function sendShowList(ctxt: Context, showsDir: string) {
 }
 
 async function sendSearch(ctxt: Context, terms: string, duration: string) {
-  const babiesOutput = await run(`babies syt -d ${duration} ${terms}`)
-  const results = yaml.parse(babiesOutput)
+  try {
+    const babiesOutput = await run(['babies', 'syt', '-d', duration, terms])
+    const results = yaml.parse(babiesOutput)
 
-  results.forEach((result: any) => {
-    result.url = `https://youtube.com/watch?v=${result.id}`
-    delete result.id
-  })
+    results.forEach((result: any) => {
+      result.url = `https://youtube.com/watch?v=${result.id}`
+      delete result.id
+    })
 
-  ctxt.websocket.send(
-    JSON.stringify({
-      type: 'search-results',
-      results,
-    }),
-  )
+    ctxt.websocket.send(
+      JSON.stringify({
+        type: 'search-results',
+        results,
+      }),
+    )
+  } catch (e) {
+    ctxt.websocket.send(
+      JSON.stringify({
+        type: 'search-results',
+        results: [],
+      }),
+    )
+  }
 }
 
 function broadcast(app: KoaWebsocket.App, data: object) {
