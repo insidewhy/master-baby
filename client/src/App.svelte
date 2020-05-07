@@ -8,6 +8,7 @@
   let searching = false
   let watchingPath
   let showList = []
+  let youtubeTitle = ''
   let searchTerms = ''
   let searchResults = []
   let searchDuration = 'any'
@@ -36,8 +37,12 @@
     searchResults = []
   }
 
-  const startShow = path => {
-    sendMessage({ type: 'watch', path })
+  const startShow = (path, comment) => {
+    const message = { type: 'watch', path }
+    if (comment) {
+      message.comment = comment
+    }
+    sendMessage(message)
   }
 
   const sendMessageWithType = type => {
@@ -229,7 +234,7 @@
   {#if searchResults.length}
     {#each searchResults as result}
       <li
-        on:click={() => { startShow(result.url) }}
+        on:click={() => { startShow(result.url, result.title) }}
         class:watching={watchingPath === result.url}
       >{result.title}</li>
     {/each}

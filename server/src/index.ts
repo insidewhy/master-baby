@@ -64,7 +64,12 @@ function broadcast(app: KoaWebsocket.App, data: object) {
   })
 }
 
-function watchShow(app: KoaWebsocket.App, path: string, showsDir: string) {
+function watchShow(
+  app: KoaWebsocket.App,
+  path: string,
+  showsDir: string,
+  comment?: string,
+) {
   if (path === watchingPath) {
     if (running) {
       // pause/resume
@@ -83,7 +88,12 @@ function watchShow(app: KoaWebsocket.App, path: string, showsDir: string) {
 
   broadcast(app, { type: 'start', path })
   watchingPath = path
-  const thisRun = (running = spawn('babies', ['n', showFullPath], {
+
+  const babiesArgs = ['n', showFullPath]
+  if (comment) {
+    babiesArgs.push('-c', comment)
+  }
+  const thisRun = (running = spawn('babies', babiesArgs, {
     stdio: ['pipe', 'inherit', 'inherit'],
   }))
 
@@ -108,8 +118,8 @@ async function listenToSocket(
     const payload = JSON.parse(message.data.toString())
     switch (payload.type) {
       case 'watch':
-        const { path } = payload
-        watchShow(app, path, showsDir)
+        const { path, comment } = payload
+        watchShow(app, path, showsDir, comment)
         break
 
       case 'show-list':
