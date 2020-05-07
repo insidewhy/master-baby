@@ -2,22 +2,17 @@
   import FaVolumeDown from 'svelte-icons/fa/FaVolumeDown.svelte'
   import FaVolumeUp from 'svelte-icons/fa/FaVolumeUp.svelte'
   import FaSearch from 'svelte-icons/fa/FaSearch.svelte'
-  import FaTimes from 'svelte-icons/fa/FaTimes.svelte'
   import FaSpinner from 'svelte-icons/fa/FaSpinner.svelte'
+  import Search from './Search.svelte'
 
   let ws
-  let searchOpen = false
-  let searching = false
   let watchingPath
   let showList = []
-  let youtubeTitle = ''
-  let searchTerms = ''
-  let searchResults = []
-  let searchDuration = 'any'
 
-  const focus = (el) => {
-    el.focus()
-  }
+  // search bind
+  let searchOpen = false
+  let searching = false
+  let searchResults = []
 
   const sendMessage = (message) => {
     if (ws) {
@@ -27,16 +22,6 @@
 
   const openSearch = () => {
     searchOpen = true
-  }
-
-  const sendSearch = () => {
-    searching = true
-    sendMessage({ type: 'search', terms: searchTerms, duration: searchDuration })
-  }
-
-  const closeSearch = () => {
-    searching = searchOpen = false
-    searchResults = []
   }
 
   const startShow = (path, comment) => {
@@ -60,6 +45,7 @@
         break
 
       case 'search-results':
+        // TODO: handle this inside Search
         searching = false
         if (searchOpen) {
           searchResults = data.results
@@ -125,15 +111,6 @@
 </script>
 
 <style type="text/scss">
-  @keyframes spin {
-    from {
-      transform:rotate(0deg);
-    }
-    to {
-      transform:rotate(360deg);
-    }
-  }
-
   ul {
     flex-grow: 1;
     width: 100%;
@@ -162,25 +139,18 @@
   }
 
   footer {
-    $line-height: 5rem;
-    $button-color: #888;
-
     flex-shrink: 1;
     align-items: center;
     border-top: solid 1px #aaa;
     padding: 0 1rem;
 
     button, .loading {
-      height: $line-height;
-      color: $button-color;
-    }
-
-    form, .loading {
-      width: 100%;
-      justify-content: center;
+      height: 5rem;
     }
 
     .loading {
+      width: 100%;
+      justify-content: center;
       align-items: center;
       overflow: hidden;
 
@@ -203,65 +173,6 @@
       font-size: 1rem;
       justify-content: center;
       align-items: center;
-      border: none;
-      cursor: pointer;
-
-      &:hover {
-        background-color: #eee;
-      }
-    }
-
-    form {
-      flex-direction: column;
-
-      div {
-        align-items: center;
-
-        + div {
-          padding-bottom: 1rem;
-        }
-      }
-
-      button {
-        width: $line-height;
-        align-self: stretch;
-      }
-
-      label {
-        align-items: center;
-        font-family: sans-serif;
-      }
-
-      select {
-        font-size: 1rem;
-        background-color: inherit;
-        margin-left: 1rem;
-        padding: 0.4rem;
-      }
-
-      .searching {
-        color: $button-color;
-        width: $line-height;
-        height: $line-height;
-        animation-name: spin;
-        animation-duration: 4000ms;
-        animation-iteration-count: infinite;
-        animation-timing-function: linear;
-        flex-basis: auto;
-      }
-    }
-  }
-
-  .search-terms {
-    flex-grow: 1;
-    width: 100%;
-    border: none;
-    border-bottom: 1px solid #aaa;
-    font-size: 1rem;
-    margin-right: 1rem;
-
-    &:focus {
-      border-bottom-color: #333;
     }
   }
 </style>
@@ -300,30 +211,12 @@
       </button>
     {:else}
       {#if searchOpen}
-        <form on:submit|preventDefault={sendSearch}>
-          <div>
-            <input class="search-terms" type="text" use:focus bind:value={searchTerms} />
-            {#if !searching}
-              <button type="submit"><FaSearch /></button>
-            {:else}
-              <div class="searching">
-                <FaSpinner />
-              </div>
-            {/if}
-            <button on:click={closeSearch}><FaTimes /></button>
-          </div>
-          <div>
-            <label>
-              duration:
-              <select bind:value={searchDuration}>
-                <option>any</option>
-                <option>long</option>
-                <option>medium</option>
-                <option>short</option>
-              </select>
-            </label>
-          </div>
-        </form>
+        <Search
+          sendMessage={sendMessage}
+          bind:searching={searching}
+          bind:searchOpen={searchOpen}
+          bind:searchResults={searchResults}
+        />
       {:else}
         <button class="open-search" on:click={openSearch}><FaSearch /></button>
       {/if}
