@@ -186,22 +186,27 @@
       div {
         align-items: center;
 
-        button {
-          padding: 0 0.7rem;
-        }
-
         + div {
           padding-bottom: 1rem;
         }
       }
 
+      button {
+        padding: 0 0.7rem;
+        max-width: 4.3rem;
+        align-self: stretch;
+      }
+
       label {
         align-items: center;
+        font-family: sans-serif;
       }
 
       select {
+        font-size: 1rem;
         background-color: inherit;
         margin-left: 1rem;
+        padding: 0.4rem;
       }
     }
   }
@@ -260,7 +265,7 @@
           </div>
           <div>
             <label>
-              Duration:
+              duration:
               <select bind:value={searchDuration}>
                 <option>any</option>
                 <option>long</option>
