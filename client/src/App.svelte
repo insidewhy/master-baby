@@ -10,6 +10,7 @@
   let showList = []
   let searchTerms = ''
   let searchResults = []
+  let searchDuration = 'any'
 
   const focus = (el) => {
     el.focus()
@@ -26,7 +27,7 @@
   }
 
   const sendSearch = () => {
-    sendMessage({ type: 'search', searchTerms })
+    sendMessage({ type: 'search', terms: searchTerms, duration: searchDuration })
     return false
   }
 
@@ -147,22 +148,24 @@
     flex-shrink: 1;
     align-items: center;
     border-top: solid 1px #aaa;
-    height: 5rem;
+    padding: 0 1rem;
 
-    @media only screen and (min-width: 600px) {
-      height: 3.5rem;
+    >button {
+      height: 5rem;
     }
 
     form, .loading {
       width: 100%;
-      align-items: center;
       justify-content: center;
       height: 100%;
     }
 
+    .loading {
+      align-items: center;
+    }
+
     button {
-      padding: 0.7rem 1.2rem;
-      height: 100%;
+      padding: 0.7rem;
       flex-grow: 1;
       width: 7rem;
       font-size: 1rem;
@@ -170,11 +173,33 @@
       align-items: center;
       border: none;
       color: #888;
-      background-color: white;
       cursor: pointer;
 
       &:hover {
         background-color: #eee;
+      }
+    }
+
+    form {
+      flex-direction: column;
+
+      > div {
+        align-items: center;
+        padding: 1rem 0;
+
+        > button {
+          // fuck you svelte
+          padding: 0 0.7rem !important;
+        }
+      }
+
+      label {
+        align-items: center;
+      }
+
+      select {
+        background-color: inherit;
+        margin-left: 1rem;
       }
     }
   }
@@ -185,7 +210,7 @@
     border: none;
     border-bottom: 1px solid #aaa;
     font-size: 1rem;
-    margin: 0 1rem;
+    margin-right: 1rem;
 
     &:focus {
       border-bottom-color: #333;
@@ -226,12 +251,25 @@
     {:else}
       {#if searching}
         <form on:submit|preventDefault={sendSearch}>
-          <input class="search-terms" type="text" use:focus bind:value={searchTerms} />
-          <button type="submit"><FaSearch /></button>
-          <button on:click={closeSearch}><FaTimes /></button>
+          <div>
+            <input class="search-terms" type="text" use:focus bind:value={searchTerms} />
+            <button type="submit"><FaSearch /></button>
+            <button on:click={closeSearch}><FaTimes /></button>
+          </div>
+          <div>
+            <label>
+              Duration:
+              <select bind:value={searchDuration}>
+                <option>any</option>
+                <option>long</option>
+                <option>medium</option>
+                <option>short</option>
+              </select>
+            </label>
+          </div>
         </form>
       {:else}
-        <button on:click={openSearch}><FaSearch /></button>
+        <button class="open-search" on:click={openSearch}><FaSearch /></button>
       {/if}
     {/if}
   {/if}

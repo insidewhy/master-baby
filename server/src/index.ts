@@ -40,8 +40,8 @@ async function sendShowList(ctxt: Context, showsDir: string) {
   )
 }
 
-async function sendSearch(ctxt: Context, searchTerms: string) {
-  const babiesOutput = await run(`babies syt ${searchTerms}`)
+async function sendSearch(ctxt: Context, terms: string, duration: string) {
+  const babiesOutput = await run(`babies syt -d ${duration} ${terms}`)
   const results = yaml.parse(babiesOutput)
 
   results.forEach((result: any) => {
@@ -125,8 +125,8 @@ async function listenToSocket(
         break
 
       case 'search':
-        const { searchTerms } = payload
-        sendSearch(ctxt, searchTerms)
+        const { terms, duration } = payload
+        sendSearch(ctxt, terms, duration)
         break
 
       default:
