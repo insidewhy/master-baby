@@ -3,8 +3,10 @@
   import FaVolumeUp from 'svelte-icons/fa/FaVolumeUp.svelte'
   import FaSearch from 'svelte-icons/fa/FaSearch.svelte'
   import FaTimes from 'svelte-icons/fa/FaTimes.svelte'
+  import FaSpinner from 'svelte-icons/fa/FaSpinner.svelte'
 
   let ws
+  let searchOpen = false
   let searching = false
   let watchingPath
   let showList = []
@@ -24,16 +26,16 @@
   }
 
   const openSearch = () => {
-    searching = true
+    searchOpen = true
   }
 
   const sendSearch = () => {
+    searching = true
     sendMessage({ type: 'search', terms: searchTerms, duration: searchDuration })
-    return false
   }
 
   const closeSearch = () => {
-    searching = false
+    searching = searchOpen = false
     searchResults = []
   }
 
@@ -58,7 +60,8 @@
         break
 
       case 'search-results':
-        if (searching) {
+        searching = false
+        if (searchOpen) {
           searchResults = data.results
         }
         break
@@ -122,6 +125,15 @@
 </script>
 
 <style type="text/scss">
+  @keyframes spin {
+    from {
+      transform:rotate(0deg);
+    }
+    to {
+      transform:rotate(360deg);
+    }
+  }
+
   ul {
     flex-grow: 1;
     width: 100%;
@@ -150,23 +162,38 @@
   }
 
   footer {
+    $line-height: 5rem;
+    $button-color: #888;
+
     flex-shrink: 1;
     align-items: center;
     border-top: solid 1px #aaa;
     padding: 0 1rem;
 
-    >button {
-      height: 5rem;
+    button, .loading {
+      height: $line-height;
+      color: $button-color;
     }
 
     form, .loading {
       width: 100%;
       justify-content: center;
-      height: 100%;
     }
 
     .loading {
       align-items: center;
+      overflow: hidden;
+
+      div {
+        $width: 3.5rem;
+        width: $width;
+        height: $width;
+        animation-name: spin;
+        animation-duration: 4000ms;
+        animation-iteration-count: infinite;
+        animation-timing-function: linear;
+        flex-basis: auto;
+      }
     }
 
     button {
@@ -177,7 +204,6 @@
       justify-content: center;
       align-items: center;
       border: none;
-      color: #888;
       cursor: pointer;
 
       &:hover {
@@ -197,8 +223,7 @@
       }
 
       button {
-        padding: 0 0.7rem;
-        max-width: 4.3rem;
+        width: $line-height;
         align-self: stretch;
       }
 
@@ -212,6 +237,17 @@
         background-color: inherit;
         margin-left: 1rem;
         padding: 0.4rem;
+      }
+
+      .searching {
+        color: $button-color;
+        width: $line-height;
+        height: $line-height;
+        animation-name: spin;
+        animation-duration: 4000ms;
+        animation-iteration-count: infinite;
+        animation-timing-function: linear;
+        flex-basis: auto;
       }
     }
   }
@@ -250,7 +286,9 @@
 <footer>
   {#if !ws}
     <div class="loading">
-      Loading
+      <div>
+        <FaSpinner />
+      </div>
     </div>
   {:else}
     {#if watchingPath}
@@ -261,11 +299,17 @@
         <FaVolumeUp />
       </button>
     {:else}
-      {#if searching}
+      {#if searchOpen}
         <form on:submit|preventDefault={sendSearch}>
           <div>
             <input class="search-terms" type="text" use:focus bind:value={searchTerms} />
-            <button type="submit"><FaSearch /></button>
+            {#if !searching}
+              <button type="submit"><FaSearch /></button>
+            {:else}
+              <div class="searching">
+                <FaSpinner />
+              </div>
+            {/if}
             <button on:click={closeSearch}><FaTimes /></button>
           </div>
           <div>
