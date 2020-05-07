@@ -183,13 +183,15 @@
     form {
       flex-direction: column;
 
-      > div {
+      div {
         align-items: center;
-        padding: 1rem 0;
 
-        > button {
-          // fuck you svelte
-          padding: 0 0.7rem !important;
+        button {
+          padding: 0 0.7rem;
+        }
+
+        + div {
+          padding-bottom: 1rem;
         }
       }
 
