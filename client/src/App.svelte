@@ -7,7 +7,7 @@
   import Search from './Search.svelte'
 
   let ws
-  let watchingPath
+  let watchingFilename
   let showList = []
   const onMessage = new EventEmitter()
 
@@ -43,16 +43,16 @@
 
     switch (data.type) {
       case 'shows':
-        watchingPath = data.watchingPath
+        watchingFilename = data.watchingFilename
         showList = data.list
         break
 
       case 'start':
-        watchingPath = data.path
+        watchingFilename = data.filename
         break
 
       case 'stop':
-        watchingPath = undefined
+        watchingFilename = undefined
         // TODO: only refresh show that stopped
         sendMessage({ type: 'show-list' })
         break
@@ -87,7 +87,7 @@
     connectingWs.onclose = () => {
       if (!closed) {
         if (connectingWs === ws) {
-          watchingPath = undefined
+          watchingFilename = undefined
           ws = undefined
         }
         console.log('websocket closed, trying again')
@@ -174,14 +174,14 @@
     {#each searchResults as result}
       <li
         on:click={() => { startShow(result.url, result.title) }}
-        class:watching={watchingPath === result.url}
+        class:watching={watchingFilename === result.url}
       >{result.title}</li>
     {/each}
   {:else}
     {#each showList as show}
       <li
         on:click={() => { startShow(show.path) }}
-        class:watching={watchingPath === show.path}
+        class:watching={watchingFilename === show.filename}
       >{show.filename}</li>
     {/each}
   {/if}
@@ -194,7 +194,7 @@
       </div>
     </div>
   {:else}
-    {#if watchingPath}
+    {#if watchingFilename}
       <button on:click={() => { sendMessageWithType("volume-down") }}>
         <FaVolumeDown />
       </button>

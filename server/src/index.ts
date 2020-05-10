@@ -1,15 +1,20 @@
 import App, { Context } from 'koa'
 import cors from '@koa/cors'
 import * as KoaWebsocket from 'koa-websocket'
+import { data as xdgData } from 'xdg-basedir'
 import { join as pathJoin, basename } from 'path'
 import { spawn, exec, ChildProcess } from 'child_process'
 import yaml from 'yaml'
+import { ensureDir } from 'fs-extra'
 
 const port = 4920
 const defaultShowsDir = `${process.env.HOME}/shows`
 
 let running: ChildProcess | undefined
 let watchingPath: string | undefined
+let watchingFilename: string | undefined
+
+const queueDir = pathJoin(xdgData!, 'master-baby', 'queue')
 
 const runShell = (cmd: string) =>
   new Promise<string>((resolve, reject) => {
@@ -53,7 +58,7 @@ async function sendShowList(ctxt: Context, showsDir: string) {
   ctxt.websocket.send(
     JSON.stringify({
       type: 'shows',
-      watchingPath,
+      watchingFilename,
       list: shows.map((show) => ({
         path: basename(show.path),
         filename: basename(show.filename),
@@ -117,23 +122,28 @@ function watchShow(
     running.stdin?.write('q\n')
   }
 
-  broadcast(app, { type: 'start', path })
-  watchingPath = path
+  // TODO: broadcast(app, { type: 'enqueue', path })
 
   const babiesArgs = ['n', showFullPath]
   if (comment) {
     babiesArgs.push('-c', comment)
   }
   const thisRun = (running = spawn('babies', babiesArgs, {
-    stdio: ['pipe', 'inherit', 'inherit'],
+    stdio: ['pipe', 'pipe', 'inherit'],
   }))
+
+  running.stdout!.once('data', (showLine: Buffer) => {
+    watchingPath = path
+    watchingFilename = basename(showLine.toString().trimRight())
+    broadcast(app, { type: 'start', filename: watchingFilename })
+  })
 
   running.on('exit', () => {
     if (running === thisRun) {
       console.log('show finished')
-      broadcast(app, { type: 'stop', path })
+      broadcast(app, { type: 'stop', filename: watchingFilename })
       running = undefined
-      watchingPath = undefined
+      watchingFilename = watchingPath = undefined
     } else {
       console.log('switched shows')
     }
@@ -179,6 +189,8 @@ async function listenToSocket(
 async function main(): Promise<void> {
   const showsDir = process.argv[2] || defaultShowsDir
   const app = KoaWebsocket.default(new App())
+
+  await ensureDir(queueDir)
   app.use(cors())
   app.listen(port, () => {
     console.log(`server listening on http://localhost:${port}`)
