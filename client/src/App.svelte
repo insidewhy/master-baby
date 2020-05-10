@@ -4,16 +4,22 @@
   import FaVolumeUp from 'svelte-icons/fa/FaVolumeUp.svelte'
   import FaSearch from 'svelte-icons/fa/FaSearch.svelte'
   import FaSpinner from 'svelte-icons/fa/FaSpinner.svelte'
+
   import Search from './Search.svelte'
+  import { onLocationChange, setLocation } from './location.js'
 
   let ws
   let watchingFilename
   let showList = []
   const onMessage = new EventEmitter()
 
-  // search bind
+  // search binds
   let searchOpen = false
   let searchResults = []
+
+  onLocationChange(({ path }) => {
+    searchOpen = path === '/search'
+  })
 
   const sendMessage = (message) => {
     if (ws) {
@@ -22,7 +28,7 @@
   }
 
   const openSearch = () => {
-    searchOpen = true
+    setLocation('/search')
   }
 
   const startShow = (path, comment) => {
@@ -206,7 +212,6 @@
         <Search
           sendMessage={sendMessage}
           onMessage={onMessage}
-          bind:searchOpen={searchOpen}
           bind:searchResults={searchResults}
         />
       {:else}

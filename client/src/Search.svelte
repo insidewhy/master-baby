@@ -3,15 +3,29 @@
   import FaTimes from 'svelte-icons/fa/FaTimes.svelte'
   import FaSpinner from 'svelte-icons/fa/FaSpinner.svelte'
   import { handleMessages } from './handleMessages.js'
+  import { setLocation, onLocationChange } from './location.js'
 
   export let sendMessage
-  export let searchOpen
   export let searchResults
   export let onMessage
 
   let searching = false
   let searchTerms = ''
   let searchDuration = 'any'
+
+  onLocationChange(({ path, params }) => {
+    if (path === '/search') {
+      searchTerms = params.terms || ''
+
+      if (searchTerms) {
+        searching = true
+        sendMessage({ type: 'search', terms: searchTerms, duration: searchDuration })
+      } else {
+        searching = false
+        searchResults = []
+      }
+    }
+  })
 
   handleMessages(onMessage, (data) => {
     if (data.type === 'search-results') {
@@ -24,14 +38,13 @@
     el.focus()
   }
 
-  const sendSearch = () => {
-    searching = true
-    sendMessage({ type: 'search', terms: searchTerms, duration: searchDuration })
+  const setSearch = () => {
+    setLocation('/search', { terms: searchTerms })
   }
 
   const closeSearch = () => {
-    searching = searchOpen = false
     searchResults = []
+    setLocation('/')
   }
 </script>
 
@@ -97,7 +110,7 @@
   }
 </style>
 
-<form on:submit|preventDefault={sendSearch}>
+<form on:submit|preventDefault={setSearch}>
   <div>
     <input class="search-terms" type="text" use:focus bind:value={searchTerms} />
     {#if !searching}
