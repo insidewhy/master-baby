@@ -49,6 +49,14 @@ const run = (cmdAndArgs: string[]) =>
     })
   })
 
+const basenameOfFile = (urlOrFile: string) => {
+  if (urlOrFile.startsWith('https://')) {
+    return urlOrFile
+  } else {
+    return basename(urlOrFile)
+  }
+}
+
 async function sendShowList(ctxt: Context, showsDir: string) {
   const babiesOutput = await runShell(`babies p -vi ${showsDir}/*`)
   const shows: Array<{ filename: string; path: string }> = yaml.parse(
@@ -134,7 +142,7 @@ function watchShow(
 
   running.stdout!.once('data', (showLine: Buffer) => {
     watchingPath = path
-    watchingFilename = basename(showLine.toString().trimRight())
+    watchingFilename = basenameOfFile(showLine.toString().trimRight())
     broadcast(app, { type: 'start', filename: watchingFilename })
   })
 
