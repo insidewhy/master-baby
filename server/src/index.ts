@@ -102,8 +102,8 @@ function broadcast(app: KoaWebsocket.App, data: object) {
 
 function watchShow(
   app: KoaWebsocket.App,
-  path: string,
   showsDir: string,
+  path: string,
   comment?: string,
 ) {
   if (path === watchingPath) {
@@ -160,7 +160,7 @@ async function listenToSocket(
     switch (payload.type) {
       case 'watch':
         const { path, comment } = payload
-        watchShow(app, path, showsDir, comment)
+        watchShow(app, showsDir, path, comment)
         break
 
       case 'show-list':
