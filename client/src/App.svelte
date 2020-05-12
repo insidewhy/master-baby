@@ -1,24 +1,30 @@
 <script>
   import { EventEmitter } from 'event-emitters'
+  import FaListOl from 'svelte-icons/fa/FaListOl.svelte'
   import FaVolumeDown from 'svelte-icons/fa/FaVolumeDown.svelte'
   import FaVolumeUp from 'svelte-icons/fa/FaVolumeUp.svelte'
   import FaSearch from 'svelte-icons/fa/FaSearch.svelte'
   import FaSpinner from 'svelte-icons/fa/FaSpinner.svelte'
+  import FaTimes from 'svelte-icons/fa/FaTimes.svelte'
 
   import Search from './Search.svelte'
   import { onLocationChange, setLocation } from './location.js'
 
   let ws
-  let watchingFilename
+  let watchingVideo
   let showList = []
+  let queue = []
+  let queueTitles
   const onMessage = new EventEmitter()
 
   // search binds
   let searchOpen = false
+  let queueOpen = false
   let searchResults = []
 
   onLocationChange(({ path }) => {
     searchOpen = path === '/search'
+    queueOpen = path === '/queue'
   })
 
   const sendMessage = (message) => {
@@ -27,12 +33,8 @@
     }
   }
 
-  const openSearch = () => {
-    setLocation('/search')
-  }
-
   const startShow = (path, comment) => {
-    const message = { type: 'watch', path }
+    const message = { type: 'enqueue', path }
     if (comment) {
       message.comment = comment
     }
@@ -43,26 +45,79 @@
     sendMessage({ type })
   }
 
+  const getQueuedDisplayTitle = ({ comment, video }) =>
+    comment || (video.startsWith('https://') ? video : video.replace(/.*\//, ''))
+
+
   const handleWebsocketMessage = (message) => {
     const data = JSON.parse(message.data)
     onMessage.emit(data)
 
     switch (data.type) {
-      case 'shows':
-        watchingFilename = data.watchingFilename
+      case 'shows': {
+        queueTitles = new Set()
+        watchingVideo = data.watchingVideo
+
+        queue = data.queue.map(queued => {
+          const displayTitle = getQueuedDisplayTitle(queued)
+          queueTitles.add(displayTitle)
+          return { ...queued, displayTitle }
+        })
+
+        data.list.forEach(show => {
+          if (queueTitles.has(show.video)) {
+            show.isQueued = true
+          }
+        })
         showList = data.list
+
         break
+      }
 
       case 'start':
-        watchingFilename = data.filename
+        watchingVideo = data.video
         break
 
       case 'stop':
-        watchingFilename = undefined
+        watchingVideo = undefined
         // TODO: only refresh show that stopped
         sendMessage({ type: 'show-list' })
         break
+
+      case 'enqueue': {
+        const { video, comment } = data
+        const toQueue = { video, comment }
+        const displayTitle = getQueuedDisplayTitle(toQueue)
+        queueTitles.add(displayTitle)
+        toQueue.displayTitle = displayTitle
+        queue = [...queue, toQueue]
+
+        showList.some((show, idx) => {
+          if (show.video === displayTitle) {
+            // weird indexness for svelte :(
+            showList[idx].isQueued = true
+            return true
+          }
+        })
+        searchResults.some((show, idx) => {
+          if (show.title === displayTitle) {
+            searchResults[idx].isQueued = true
+            return true
+          }
+        })
+
+        break
+      }
     }
+  }
+
+  const setSearchResults = newResults => {
+    newResults.forEach(result => {
+      if (queueTitles.has(result.title)) {
+        result.isQueued = true
+      }
+    })
+    searchResults = newResults
   }
 
   const start = () => {
@@ -93,7 +148,7 @@
     connectingWs.onclose = () => {
       if (!closed) {
         if (connectingWs === ws) {
-          watchingFilename = undefined
+          watchingVideo = undefined
           ws = undefined
         }
         console.log('websocket closed, trying again')
@@ -131,6 +186,10 @@
       background-color: #a2d9ce;
     }
 
+    &.queued {
+      background-color: #ffffdd;
+    }
+
     &.watching {
       background-color: #a92dce;
     }
@@ -138,6 +197,7 @@
 
   footer {
     flex-shrink: 1;
+    flex-wrap: wrap;
     align-items: center;
     border-top: solid 1px #aaa;
     padding: 0 1rem;
@@ -173,23 +233,37 @@
       align-items: center;
     }
   }
+
+  :global(form) {
+    min-width: 100%;
+  }
 </style>
 
 <ul>
   {#if searchResults.length}
     {#each searchResults as result}
       <li
-        on:click={() => { startShow(result.url, result.title) }}
-        class:watching={watchingFilename === result.url}
+        on:click={() => { startShow(result.video, result.title) }}
+        class:watching={watchingVideo === result.video}
+        class:queued={result.isQueued}
       >{result.title}</li>
     {/each}
   {:else}
-    {#each showList as show}
-      <li
-        on:click={() => { startShow(show.path) }}
-        class:watching={watchingFilename === show.filename}
-      >{show.filename}</li>
-    {/each}
+    {#if queueOpen}
+      {#each queue as queued}
+        <li
+          class:watching={watchingVideo === queued.displayTitle || watchingVideo === queued.video}
+        >{queued.displayTitle}</li>
+      {/each}
+    {:else}
+      {#each showList as show}
+        <li
+          on:click={() => { startShow(show.path) }}
+          class:watching={watchingVideo === show.video}
+          class:queued={show.isQueued}
+        >{show.video}</li>
+      {/each}
+    {/if}
   {/if}
 </ul>
 <footer>
@@ -200,22 +274,28 @@
       </div>
     </div>
   {:else}
-    {#if watchingFilename}
+    {#if !searchOpen}
+      <button on:click={() => setLocation('/search')}><FaSearch /></button>
+    {/if}
+    {#if watchingVideo}
       <button on:click={() => { sendMessageWithType("volume-down") }}>
         <FaVolumeDown />
       </button>
       <button on:click={() => { sendMessageWithType("volume-up") }}>
         <FaVolumeUp />
       </button>
+    {/if}
+    {#if searchOpen}
+      <Search
+        sendMessage={sendMessage}
+        onMessage={onMessage}
+        onSearchResults={setSearchResults}
+      />
     {:else}
-      {#if searchOpen}
-        <Search
-          sendMessage={sendMessage}
-          onMessage={onMessage}
-          bind:searchResults={searchResults}
-        />
+      {#if queueOpen}
+        <button on:click={() => setLocation('/')}><FaTimes /></button>
       {:else}
-        <button class="open-search" on:click={openSearch}><FaSearch /></button>
+        <button on:click={() => setLocation('/queue')}><FaListOl /></button>
       {/if}
     {/if}
   {/if}

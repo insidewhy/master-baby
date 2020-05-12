@@ -5,16 +5,21 @@ import { data as xdgData } from 'xdg-basedir'
 import { join as pathJoin, basename } from 'path'
 import { spawn, exec, ChildProcess } from 'child_process'
 import yaml from 'yaml'
-import { ensureDir } from 'fs-extra'
+import { ensureDir, readFile } from 'fs-extra'
 
 const port = 4920
 const defaultShowsDir = `${process.env.HOME}/shows`
 
 let running: ChildProcess | undefined
-let watchingPath: string | undefined
-let watchingFilename: string | undefined
+let watchingVideo: string | undefined
 
 const queueDir = pathJoin(xdgData!, 'master-baby', 'queue')
+const queueFile = pathJoin(queueDir, '.videos.yaml')
+
+interface ShowsState {
+  showsDir: string
+  // TODO: store watch queue
+}
 
 const runShell = (cmd: string) =>
   new Promise<string>((resolve, reject) => {
@@ -57,20 +62,32 @@ const basenameOfFile = (urlOrFile: string) => {
   }
 }
 
-async function sendShowList(ctxt: Context, showsDir: string) {
-  const babiesOutput = await runShell(`babies p -vi ${showsDir}/*`)
+async function sendShowList(ctxt: Context, showsState: ShowsState) {
+  const babiesOutput = await runShell(`babies p -vi ${showsState.showsDir}/*`)
   const shows: Array<{ filename: string; path: string }> = yaml.parse(
     babiesOutput,
   )
 
+  let data = null
+  try {
+    data = (await readFile(queueFile)).toString()
+  } catch (e) {
+    // no file
+  }
+
+  const queue: Array<{ comment?: string; video: string }> = data
+    ? yaml.parse(data)
+    : []
+
   ctxt.websocket.send(
     JSON.stringify({
       type: 'shows',
-      watchingFilename,
+      watchingVideo,
       list: shows.map((show) => ({
         path: basename(show.path),
-        filename: basename(show.filename),
+        video: basename(show.filename),
       })),
+      queue,
     }),
   )
 }
@@ -81,7 +98,7 @@ async function sendSearch(ctxt: Context, terms: string, duration: string) {
     const results = yaml.parse(babiesOutput)
 
     results.forEach((result: any) => {
-      result.url = `https://youtube.com/watch?v=${result.id}`
+      result.video = `https://youtube.com/watch?v=${result.id}`
       delete result.id
     })
 
@@ -108,71 +125,97 @@ function broadcast(app: KoaWebsocket.App, data: object) {
   })
 }
 
-function watchShow(
-  app: KoaWebsocket.App,
-  showsDir: string,
-  path: string,
-  comment?: string,
-) {
-  if (path === watchingPath) {
-    if (running) {
-      // pause/resume
-      running?.stdin?.write('p\n')
-    }
-    return
-  }
-
-  const showFullPath = path.startsWith('https://')
-    ? path
-    : pathJoin(showsDir, path)
-
-  if (running) {
-    running.stdin?.write('q\n')
-  }
-
-  // TODO: broadcast(app, { type: 'enqueue', path })
-
-  const babiesArgs = ['n', showFullPath]
-  if (comment) {
-    babiesArgs.push('-c', comment)
-  }
-  const thisRun = (running = spawn('babies', babiesArgs, {
+async function spawnBabies(app: KoaWebsocket.App): Promise<void> {
+  running = spawn('babies', ['n', queueDir], {
     stdio: ['pipe', 'pipe', 'inherit'],
-  }))
+  })
 
-  running.stdout!.once('data', (showLine: Buffer) => {
-    watchingPath = path
-    watchingFilename = basenameOfFile(showLine.toString().trimRight())
-    broadcast(app, { type: 'start', filename: watchingFilename })
+  let hasShow = false
+  let showFinished = false
+  running.stdout!.on('data', (data: Buffer) => {
+    const lines = data.toString()
+
+    lines
+      .trimRight()
+      .split('\n')
+      .forEach((line) => {
+        if (!hasShow) {
+          hasShow = true
+          watchingVideo = basenameOfFile(line)
+          broadcast(app, { type: 'start', video: watchingVideo })
+        }
+
+        if (line.startsWith('end: ')) {
+          const [position, duration] = line.slice(5).split('/')
+          showFinished = position === duration
+        }
+      })
   })
 
   running.on('exit', () => {
-    if (running === thisRun) {
+    running = undefined
+
+    if (hasShow) {
       console.log('show finished')
-      broadcast(app, { type: 'stop', filename: watchingFilename })
-      running = undefined
-      watchingFilename = watchingPath = undefined
-    } else {
-      console.log('switched shows')
+      broadcast(app, {
+        type: 'stop',
+        video: watchingVideo,
+        complete: showFinished,
+      })
+      watchingVideo = undefined
+
+      if (showFinished) {
+        // watch the next show if there is one
+        spawnBabies(app)
+      }
     }
   })
+}
+
+// add show to queue and start watching shows if not already watching
+async function enqueueShow(
+  app: KoaWebsocket.App,
+  showsState: ShowsState,
+  path: string,
+  comment?: string,
+) {
+  const showFullPath = path.startsWith('https://')
+    ? path
+    : pathJoin(showsState.showsDir, path)
+
+  const queueCmd = ['babies', 'e', queueDir, showFullPath]
+  if (comment) {
+    queueCmd.push('-c', comment)
+  }
+  const enqueueOutput = await run(queueCmd)
+  const enqueueMsg = yaml.parse(enqueueOutput)?.[0]
+  if (!enqueueMsg) {
+    console.warn('Unexpected output from enqueue command: %O', enqueueOutput)
+  } else {
+    enqueueMsg.type = 'enqueue'
+    broadcast(app, enqueueMsg)
+  }
+
+  if (!running) {
+    await spawnBabies(app)
+  }
 }
 
 async function listenToSocket(
   app: KoaWebsocket.App,
   ctxt: Context,
-  showsDir: string,
+  showsState: ShowsState,
 ) {
   ctxt.websocket.onmessage = (message) => {
     const payload = JSON.parse(message.data.toString())
     switch (payload.type) {
-      case 'watch':
+      case 'enqueue':
         const { path, comment } = payload
-        watchShow(app, showsDir, path, comment)
+        enqueueShow(app, showsState, path, comment)
         break
 
       case 'show-list':
-        sendShowList(ctxt, showsDir)
+        sendShowList(ctxt, showsState)
         break
 
       case 'volume-up':
@@ -195,7 +238,9 @@ async function listenToSocket(
 }
 
 async function main(): Promise<void> {
-  const showsDir = process.argv[2] || defaultShowsDir
+  const showsState = {
+    showsDir: process.argv[2] || defaultShowsDir,
+  }
   const app = KoaWebsocket.default(new App())
 
   await ensureDir(queueDir)
@@ -206,8 +251,8 @@ async function main(): Promise<void> {
 
   app.ws.use((ctxt, next) => {
     console.debug('got websocket')
-    sendShowList(ctxt, showsDir)
-    listenToSocket(app, ctxt, showsDir)
+    sendShowList(ctxt, showsState)
+    listenToSocket(app, ctxt, showsState)
     return next()
   })
 }

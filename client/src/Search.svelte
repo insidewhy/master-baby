@@ -6,7 +6,7 @@
   import { setLocation, onLocationChange } from './location.js'
 
   export let sendMessage
-  export let searchResults
+  export let onSearchResults
   export let onMessage
 
   let searching = false
@@ -22,7 +22,7 @@
         sendMessage({ type: 'search', terms: searchTerms, duration: searchDuration })
       } else {
         searching = false
-        searchResults = []
+        onSearchResults([])
       }
     }
   })
@@ -30,7 +30,7 @@
   handleMessages(onMessage, (data) => {
     if (data.type === 'search-results') {
       searching = false
-      searchResults = data.results
+      onSearchResults(data.results)
     }
   })
 
@@ -43,7 +43,7 @@
   }
 
   const closeSearch = () => {
-    searchResults = []
+    onSearchResults([])
     setLocation('/')
   }
 </script>
