@@ -6,6 +6,8 @@
   import FaSearch from 'svelte-icons/fa/FaSearch.svelte'
   import FaSpinner from 'svelte-icons/fa/FaSpinner.svelte'
   import FaTimes from 'svelte-icons/fa/FaTimes.svelte'
+  import FaPause from 'svelte-icons/fa/FaPause.svelte'
+  import FaPlay from 'svelte-icons/fa/FaPlay.svelte'
 
   import Search from './Search.svelte'
   import { onLocationChange, setLocation } from './location.js'
@@ -20,6 +22,7 @@
   // search binds
   let searchOpen = false
   let queueOpen = false
+  let paused = false
   let searchResults = []
 
   onLocationChange(({ path }) => {
@@ -45,6 +48,14 @@
     sendMessage({ type })
   }
 
+  const handlePlay = () => {
+    if (! watchingVideo) {
+      sendMessageWithType('resume-playlist')
+    } else {
+      sendMessageWithType('toggle-pause')
+    }
+  }
+
   const getQueuedDisplayTitle = ({ comment, video }) =>
     comment || (video.startsWith('https://') ? video : video.replace(/.*\//, ''))
 
@@ -57,6 +68,7 @@
       case 'shows': {
         queueTitles = new Set()
         watchingVideo = data.watchingVideo
+        paused = data.paused
 
         queue = data.queue.map(queued => {
           const displayTitle = getQueuedDisplayTitle(queued)
@@ -76,6 +88,14 @@
 
       case 'start':
         watchingVideo = data.video
+        break
+
+      case 'paused':
+        paused = true
+        break
+
+      case 'resumed':
+        paused = false
         break
 
       case 'stop':
@@ -274,8 +294,10 @@
       </div>
     </div>
   {:else}
-    {#if !searchOpen}
-      <button on:click={() => setLocation('/search')}><FaSearch /></button>
+    {#if ! watchingVideo || paused}
+      <button on:click={() => handlePlay()}><FaPlay /></button>
+    {:else}
+      <button on:click={() => sendMessageWithType('toggle-pause')}><FaPause /></button>
     {/if}
     {#if watchingVideo}
       <button on:click={() => { sendMessageWithType("volume-down") }}>
@@ -284,6 +306,9 @@
       <button on:click={() => { sendMessageWithType("volume-up") }}>
         <FaVolumeUp />
       </button>
+    {/if}
+    {#if !searchOpen}
+      <button on:click={() => setLocation('/search')}><FaSearch /></button>
     {/if}
     {#if searchOpen}
       <Search

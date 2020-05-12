@@ -11,6 +11,7 @@ const port = 4920
 const defaultShowsDir = `${process.env.HOME}/shows`
 
 let running: ChildProcess | undefined
+let paused = false
 let watchingVideo: string | undefined
 
 const queueDir = pathJoin(xdgData!, 'master-baby', 'queue')
@@ -83,6 +84,7 @@ async function sendShowList(ctxt: Context, showsState: ShowsState) {
     JSON.stringify({
       type: 'shows',
       watchingVideo,
+      paused,
       list: shows.map((show) => ({
         path: basename(show.path),
         video: basename(show.filename),
@@ -139,7 +141,9 @@ async function spawnBabies(app: KoaWebsocket.App): Promise<void> {
       .trimRight()
       .split('\n')
       .forEach((line) => {
+        line = line.trimRight()
         if (!hasShow) {
+          paused = false
           hasShow = true
           watchingVideo = basenameOfFile(line)
           broadcast(app, { type: 'start', video: watchingVideo })
@@ -148,6 +152,14 @@ async function spawnBabies(app: KoaWebsocket.App): Promise<void> {
         if (line.startsWith('end: ')) {
           const [position, duration] = line.slice(5).split('/')
           showFinished = position === duration
+        } else if (line.startsWith('pause: ')) {
+          if (line.endsWith('paused')) {
+            paused = true
+            broadcast(app, { type: 'paused' })
+          } else {
+            paused = false
+            broadcast(app, { type: 'resumed' })
+          }
         }
       })
   })
@@ -214,8 +226,16 @@ async function listenToSocket(
         enqueueShow(app, showsState, path, comment)
         break
 
+      case 'resume-playlist':
+        spawnBabies(app)
+        break
+
       case 'show-list':
         sendShowList(ctxt, showsState)
+        break
+
+      case 'toggle-pause':
+        running?.stdin?.write('p\n')
         break
 
       case 'volume-up':
