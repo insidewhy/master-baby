@@ -223,7 +223,16 @@
     padding: 0 1rem;
 
     button, .loading {
-      height: 5rem;
+      height: 4.5rem;
+    }
+
+    button {
+      width: 4.5rem;
+      padding: 0.7rem;
+      flex-grow: 1;
+      font-size: 1rem;
+      justify-content: center;
+      align-items: center;
     }
 
     .loading {
@@ -242,15 +251,6 @@
         animation-timing-function: linear;
         flex-basis: auto;
       }
-    }
-
-    button {
-      padding: 0.7rem;
-      flex-grow: 1;
-      width: 7rem;
-      font-size: 1rem;
-      justify-content: center;
-      align-items: center;
     }
   }
 

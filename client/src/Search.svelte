@@ -49,7 +49,7 @@
 </script>
 
 <style type="text/scss">
-  $line-height: 5rem;
+  $line-height: 4.5rem;
   $button-color: #888;
 
   form {
