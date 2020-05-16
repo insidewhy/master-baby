@@ -4,13 +4,14 @@
   import FaVolumeDown from 'svelte-icons/fa/FaVolumeDown.svelte'
   import FaVolumeUp from 'svelte-icons/fa/FaVolumeUp.svelte'
   import FaSearch from 'svelte-icons/fa/FaSearch.svelte'
-  import FaSpinner from 'svelte-icons/fa/FaSpinner.svelte'
   import FaTimes from 'svelte-icons/fa/FaTimes.svelte'
   import FaPause from 'svelte-icons/fa/FaPause.svelte'
   import FaPlay from 'svelte-icons/fa/FaPlay.svelte'
 
   import QueuedVideo from './QueuedVideo.svelte'
+  import QueueControls from './QueueControls.svelte'
   import Search from './Search.svelte'
+  import Loading from './Loading.svelte'
   import { onLocationChange, setLocation } from './location.js'
 
   let ws
@@ -18,6 +19,7 @@
   let showList = []
   let queue = []
   let queueTitles
+  let queueSelections = new Set()
   const onMessage = new EventEmitter()
 
   // search binds
@@ -28,7 +30,11 @@
 
   onLocationChange(({ path }) => {
     searchOpen = path === '/search'
-    queueOpen = path === '/queue'
+    const nextQueueOpen = path === '/queue'
+    if (! queueOpen && nextQueueOpen) {
+      queueSelections = new Set()
+    }
+    queueOpen = nextQueueOpen
   })
 
   const sendMessage = (message) => {
@@ -79,6 +85,22 @@
     return { ...queueEntry, displayTitle }
   }
 
+  const updateShowQueueState = () => {
+    showList.forEach(show => {
+      if (queueTitles.has(show.video)) {
+        show.isQueued = true
+      } else {
+        show.isQueued = false
+      }
+    })
+  }
+
+  const updateSearchResultQueueState = () => {
+    searchResults.forEach(result => {
+      result.isQueued = queueTitles.has(result.title)
+    })
+  }
+
   const handleWebsocketMessage = (message) => {
     const data = JSON.parse(message.data)
     onMessage.emit(data)
@@ -88,16 +110,9 @@
         queueTitles = new Set()
         watchingVideo = data.watchingVideo
         paused = data.paused
-
         queue = data.queue.map(processQueueEntry)
-
-        data.list.forEach(show => {
-          if (queueTitles.has(show.video)) {
-            show.isQueued = true
-          }
-        })
         showList = data.list
-
+        updateShowQueueState()
         break
       }
 
@@ -119,19 +134,20 @@
         sendMessage({ type: 'show-list' })
         break
 
-      case 'enqueue': {
+      case 'enqueued': {
         const { type, ...queueEntry } = data
-        queue = [...queue, processQueueEntry(queueEntry)]
+        const newEntry = processQueueEntry(queueEntry)
+        queue = [...queue, newEntry]
 
         showList.some((show, idx) => {
-          if (show.video === displayTitle) {
+          if (show.video === newEntry.displayTitle) {
             // weird indexness for svelte :(
             showList[idx].isQueued = true
             return true
           }
         })
         searchResults.some((show, idx) => {
-          if (show.title === displayTitle) {
+          if (show.title === newEntry.displayTitle) {
             searchResults[idx].isQueued = true
             return true
           }
@@ -139,16 +155,29 @@
 
         break
       }
+
+      case 'dequeued': {
+        const { videos } = data
+        const videosSet = new Set(videos)
+        queueTitles = new Set()
+        queue = queue.filter(queued => {
+          if (videosSet.has(queued.video)) {
+            return false
+          } else {
+            queueTitles.add(queued.displayTitle)
+            return true
+          }
+        })
+        updateShowQueueState()
+        updateSearchResultQueueState()
+        break
+      }
     }
   }
 
   const setSearchResults = newResults => {
-    newResults.forEach(result => {
-      if (queueTitles.has(result.title)) {
-        result.isQueued = true
-      }
-    })
     searchResults = newResults
+    updateSearchResultQueueState()
   }
 
   const start = () => {
@@ -233,35 +262,14 @@
     border-top: solid 1px #aaa;
     padding: 0 1rem;
 
-    button, .loading {
+    :global(button) {
       height: 4.5rem;
-    }
-
-    button {
       width: 4.5rem;
       padding: 0.7rem;
       flex-grow: 1;
       font-size: 1rem;
       justify-content: center;
       align-items: center;
-    }
-
-    .loading {
-      width: 100%;
-      justify-content: center;
-      align-items: center;
-      overflow: hidden;
-
-      div {
-        $width: 3.5rem;
-        width: $width;
-        height: $width;
-        animation-name: spin;
-        animation-duration: 4000ms;
-        animation-iteration-count: infinite;
-        animation-timing-function: linear;
-        flex-basis: auto;
-      }
     }
   }
 
@@ -285,6 +293,7 @@
         <QueuedVideo
           watching={watchingVideo === queued.displayTitle || watchingVideo === queued.video}
           queued={queued}
+          bind:queueSelections={queueSelections}
         />
       {/each}
     {:else}
@@ -299,12 +308,15 @@
   {/if}
 </ul>
 <footer>
+  {#if queueSelections.size}
+    <QueueControls
+      onMessage={onMessage}
+      sendMessage={sendMessage}
+      bind:selections={queueSelections}
+    />
+  {/if}
   {#if !ws}
-    <div class="loading">
-      <div>
-        <FaSpinner />
-      </div>
-    </div>
+    <Loading />
   {:else}
     {#if ! watchingVideo || paused}
       <button on:click={() => handlePlay()}><FaPlay /></button>

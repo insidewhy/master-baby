@@ -200,14 +200,28 @@ async function enqueueShow(
     queueCmd.push('-c', comment)
   }
   const enqueueOutput = await run(queueCmd)
-  const enqueueMsg = yaml.parse(enqueueOutput)?.[0]
-  if (enqueueMsg) {
-    enqueueMsg.type = 'enqueue'
-    broadcast(app, enqueueMsg)
+  const enqueuedMessage = yaml.parse(enqueueOutput)?.[0]
+  if (enqueuedMessage) {
+    enqueuedMessage.type = 'enqueued'
+    broadcast(app, enqueuedMessage)
   }
 
   if (!running) {
     await spawnBabies(app)
+  }
+}
+
+async function dequeueShows(app: KoaWebsocket.App, videos: string[]) {
+  try {
+    await run(['babies', 'de', queueDir, ...videos])
+    broadcast(app, { type: 'dequeued', videos })
+
+    if (running && watchingVideo && videos.includes(watchingVideo)) {
+      // the current video was dequeued, quit it
+      running.stdin?.write('q\n')
+    }
+  } catch (e) {
+    broadcast(app, { type: 'dequeued', videos: [] })
   }
 }
 
@@ -222,6 +236,11 @@ async function listenToSocket(
       case 'enqueue':
         const { path, comment } = payload
         enqueueShow(app, showsState, path, comment)
+        break
+
+      case 'dequeue':
+        const { videos } = payload
+        dequeueShows(app, videos)
         break
 
       case 'resume-playlist':
