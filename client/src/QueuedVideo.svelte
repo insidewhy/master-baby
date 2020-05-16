@@ -7,6 +7,7 @@
   .duration {
     margin-left: auto;
     white-space: nowrap;
+    padding-left: 0.7em;
   }
 </style>
 
