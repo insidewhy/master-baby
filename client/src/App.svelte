@@ -9,6 +9,7 @@
   import FaPause from 'svelte-icons/fa/FaPause.svelte'
   import FaPlay from 'svelte-icons/fa/FaPlay.svelte'
 
+  import QueuedVideo from './QueuedVideo.svelte'
   import Search from './Search.svelte'
   import { onLocationChange, setLocation } from './location.js'
 
@@ -56,9 +57,27 @@
     }
   }
 
-  const getQueuedDisplayTitle = ({ comment, video }) =>
-    comment || (video.startsWith('https://') ? video : video.replace(/.*\//, ''))
+  const processTime = (time) =>
+    time.replace(/^0:0*/, '').replace(/\.\d+$/, '')
 
+  const processQueueEntry = (queueEntry) => {
+    const { comment, video } = queueEntry
+    const displayTitle = comment || (video.startsWith('https://') ? video : video.replace(/.*\//, ''))
+    queueTitles.add(displayTitle)
+
+    if (queueEntry.duration) {
+      queueEntry.duration = processTime(queueEntry.duration)
+      if (queueEntry.viewings) {
+        const position = queueEntry.viewings[queueEntry.viewings.length - 1].end
+        if (position) {
+          queueEntry.position = processTime(position.replace(/.* /, ''))
+        }
+        delete queueEntry.viewings
+      }
+    }
+
+    return { ...queueEntry, displayTitle }
+  }
 
   const handleWebsocketMessage = (message) => {
     const data = JSON.parse(message.data)
@@ -70,11 +89,7 @@
         watchingVideo = data.watchingVideo
         paused = data.paused
 
-        queue = data.queue.map(queued => {
-          const displayTitle = getQueuedDisplayTitle(queued)
-          queueTitles.add(displayTitle)
-          return { ...queued, displayTitle }
-        })
+        queue = data.queue.map(processQueueEntry)
 
         data.list.forEach(show => {
           if (queueTitles.has(show.video)) {
@@ -105,12 +120,8 @@
         break
 
       case 'enqueue': {
-        const { video, comment } = data
-        const toQueue = { video, comment }
-        const displayTitle = getQueuedDisplayTitle(toQueue)
-        queueTitles.add(displayTitle)
-        toQueue.displayTitle = displayTitle
-        queue = [...queue, toQueue]
+        const { type, ...queueEntry } = data
+        queue = [...queue, processQueueEntry(queueEntry)]
 
         showList.some((show, idx) => {
           if (show.video === displayTitle) {
@@ -192,26 +203,26 @@
     flex-direction: column;
     overflow-y: scroll;
     margin-top: 0.5rem;
-  }
 
-  li {
-    width: 100%;
-    align-items: center;
-    word-break: break-word;
-    padding: 0.8rem 1rem;
-    border-bottom: #eee solid 1px;
+    :global(> li) {
+      width: 100%;
+      align-items: center;
+      word-break: break-word;
+      padding: 0.8rem 1rem;
+      border-bottom: #eee solid 1px;
 
-    &:hover {
-      cursor: pointer;
-      background-color: #a2d9ce;
-    }
+      &:hover {
+        cursor: pointer;
+        background-color: #a2d9ce;
+      }
 
-    &.queued {
-      background-color: #ffffdd;
-    }
+      &.queued {
+        background-color: #ffffdd;
+      }
 
-    &.watching {
-      background-color: #a92dce;
+      &.watching {
+        background-color: #a92dce;
+      }
     }
   }
 
@@ -271,9 +282,10 @@
   {:else}
     {#if queueOpen}
       {#each queue as queued}
-        <li
-          class:watching={watchingVideo === queued.displayTitle || watchingVideo === queued.video}
-        >{queued.displayTitle}</li>
+        <QueuedVideo
+          watching={watchingVideo === queued.displayTitle || watchingVideo === queued.video}
+          queued={queued}
+        />
       {/each}
     {:else}
       {#each showList as show}
