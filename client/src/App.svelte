@@ -64,7 +64,7 @@
   }
 
   const processTime = (time) =>
-    time.replace(/^0:0*/, '').replace(/\.\d+$/, '')
+    time.replace(/^0:0*:?/, '').replace(/\.\d+$/, '')
 
   const processQueueEntry = (queueEntry) => {
     const { comment, video } = queueEntry
