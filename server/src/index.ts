@@ -201,9 +201,7 @@ async function enqueueShow(
   }
   const enqueueOutput = await run(queueCmd)
   const enqueueMsg = yaml.parse(enqueueOutput)?.[0]
-  if (!enqueueMsg) {
-    console.warn('Unexpected output from enqueue command: %O', enqueueOutput)
-  } else {
+  if (enqueueMsg) {
     enqueueMsg.type = 'enqueue'
     broadcast(app, enqueueMsg)
   }
