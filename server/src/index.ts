@@ -221,6 +221,7 @@ async function dequeueShows(app: KoaWebsocket.App, videos: string[]) {
       running.stdin?.write('q\n')
     }
   } catch (e) {
+    console.warn('Error dequeuing video', e)
     broadcast(app, { type: 'dequeued', videos: [] })
   }
 }
