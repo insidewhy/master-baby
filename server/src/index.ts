@@ -76,7 +76,7 @@ async function sendShowList(ctxt: Context, showsState: ShowsState) {
     // no file
   }
 
-  const queue: Array<{ comment?: string; video: string }> = data
+  const queue: Array<{ title?: string; video: string }> = data
     ? yaml.parse(data)
     : []
 
@@ -189,15 +189,15 @@ async function enqueueShow(
   app: KoaWebsocket.App,
   showsState: ShowsState,
   path: string,
-  comment?: string,
+  title?: string,
 ) {
   const showFullPath = path.startsWith('https://')
     ? path
     : pathJoin(showsState.showsDir, path)
 
   const queueCmd = ['babies', 'e', queueDir, showFullPath]
-  if (comment) {
-    queueCmd.push('-c', comment)
+  if (title) {
+    queueCmd.push('-t', title)
   }
   const enqueueOutput = await run(queueCmd)
   const enqueuedMessage = yaml.parse(enqueueOutput)?.[0]
@@ -235,8 +235,8 @@ async function listenToSocket(
     const payload = JSON.parse(message.data.toString())
     switch (payload.type) {
       case 'enqueue':
-        const { path, comment } = payload
-        enqueueShow(app, showsState, path, comment)
+        const { path, title } = payload
+        enqueueShow(app, showsState, path, title)
         break
 
       case 'dequeue':

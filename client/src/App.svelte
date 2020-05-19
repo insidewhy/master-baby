@@ -43,10 +43,10 @@
     }
   }
 
-  const startShow = (path, comment) => {
+  const startShow = (path, title) => {
     const message = { type: 'enqueue', path }
-    if (comment) {
-      message.comment = comment
+    if (title) {
+      message.title = title
     }
     sendMessage(message)
   }
@@ -67,8 +67,8 @@
     time.replace(/^0:0*:?/, '').replace(/\.\d+$/, '')
 
   const processQueueEntry = (queueEntry) => {
-    const { comment, video } = queueEntry
-    const displayTitle = comment || (video.startsWith('https://') ? video : video.replace(/.*\//, ''))
+    const { title, video } = queueEntry
+    const displayTitle = title || (video.startsWith('https://') ? video : video.replace(/.*\//, ''))
     queueTitles.add(displayTitle)
 
     if (queueEntry.duration) {
