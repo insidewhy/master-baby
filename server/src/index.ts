@@ -142,11 +142,13 @@ async function spawnBabies(app: KoaWebsocket.App): Promise<void> {
       .split('\n')
       .forEach((line) => {
         line = line.trimRight()
-        if (!hasShow) {
-          paused = false
-          hasShow = true
-          watchingVideo = basenameOfFile(line)
-          broadcast(app, { type: 'start', video: watchingVideo })
+        if (line.startsWith('start: ')) {
+          if (!hasShow) {
+            paused = false
+            hasShow = true
+            watchingVideo = basenameOfFile(line.slice(7))
+            broadcast(app, { type: 'start', video: watchingVideo })
+          }
         }
 
         if (line.startsWith('end: ')) {
