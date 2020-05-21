@@ -8,17 +8,17 @@ import yaml from 'yaml'
 import { ensureDir, readFile } from 'fs-extra'
 
 const port = 4920
-const defaultShowsDir = `${process.env.HOME}/shows`
+const defaultMediaDir = `${process.env.HOME}/shows`
 
 let running: ChildProcess | undefined
 let paused = false
-let watchingVideo: string | undefined
+let playingMedia: string | undefined
 
 const queueDir = pathJoin(xdgData!, 'master-baby', 'queue')
 const queueFile = pathJoin(queueDir, '.videos.yaml')
 
-interface ShowsState {
-  showsDir: string
+interface MediaState {
+  mediaDir: string
   // TODO: store watch queue
 }
 
@@ -63,9 +63,41 @@ const basenameOfFile = (urlOrFile: string) => {
   }
 }
 
-async function sendShowList(ctxt: Context, showsState: ShowsState) {
-  const babiesOutput = await runShell(`babies p -vi ${showsState.showsDir}/*`)
-  const shows: Array<{ filename: string; path: string }> = yaml.parse(
+interface BabiesQueueEntry {
+  title?: string
+  duration?: string
+  video: string
+  viewings?: unknown[]
+}
+interface MasterBabyQueueEntry {
+  title?: string
+  duration?: string
+  location: string
+  sessions?: unknown[]
+}
+
+function convertQueueEntry({
+  video,
+  title,
+  viewings,
+  duration,
+}: BabiesQueueEntry): MasterBabyQueueEntry {
+  const converted: MasterBabyQueueEntry = { location: video }
+  if (title) {
+    converted.title = title
+  }
+  if (viewings) {
+    converted.sessions = viewings
+  }
+  if (duration) {
+    converted.duration = duration
+  }
+  return converted
+}
+
+async function sendMediaList(ctxt: Context, mediaState: MediaState) {
+  const babiesOutput = await runShell(`babies p -vi ${mediaState.mediaDir}/*`)
+  const media: Array<{ filename: string; path: string }> = yaml.parse(
     babiesOutput,
   )
 
@@ -76,20 +108,18 @@ async function sendShowList(ctxt: Context, showsState: ShowsState) {
     // no file
   }
 
-  const queue: Array<{ title?: string; video: string }> = data
-    ? yaml.parse(data)
-    : []
+  const queue: BabiesQueueEntry[] = data ? yaml.parse(data) : []
 
   ctxt.websocket.send(
     JSON.stringify({
-      type: 'shows',
-      watchingVideo,
+      type: 'media',
+      playingMedia,
       paused,
-      list: shows.map((show) => ({
-        path: basename(show.path),
-        video: basename(show.filename),
+      list: media.map((mediaFile) => ({
+        path: basename(mediaFile.path),
+        location: basename(mediaFile.filename),
       })),
-      queue,
+      queue: queue.map(convertQueueEntry),
     }),
   )
 }
@@ -100,7 +130,7 @@ async function sendSearch(ctxt: Context, terms: string, duration: string) {
     const results = yaml.parse(babiesOutput)
 
     results.forEach((result: any) => {
-      result.video = `https://youtube.com/watch?v=${result.id}`
+      result.location = `https://youtube.com/watch?v=${result.id}`
       delete result.id
     })
 
@@ -132,8 +162,8 @@ async function spawnBabies(app: KoaWebsocket.App): Promise<void> {
     stdio: ['pipe', 'pipe', 'inherit'],
   })
 
-  let hasShow = false
-  let showFinished = false
+  let hasMedia = false
+  let mediaFinished = false
   running.stdout!.on('data', (data: Buffer) => {
     const lines = data.toString()
 
@@ -143,17 +173,17 @@ async function spawnBabies(app: KoaWebsocket.App): Promise<void> {
       .forEach((line) => {
         line = line.trimRight()
         if (line.startsWith('start: ')) {
-          if (!hasShow) {
+          if (!hasMedia) {
             paused = false
-            hasShow = true
-            watchingVideo = basenameOfFile(line.slice(7))
-            broadcast(app, { type: 'start', video: watchingVideo })
+            hasMedia = true
+            playingMedia = basenameOfFile(line.slice(7))
+            broadcast(app, { type: 'start', location: playingMedia })
           }
         }
 
         if (line.startsWith('end: ')) {
           const [position, duration] = line.slice(5).split('/')
-          showFinished = position === duration
+          mediaFinished = position === duration
         } else if (line.startsWith('pause: ')) {
           if (line.endsWith('paused')) {
             paused = true
@@ -169,43 +199,42 @@ async function spawnBabies(app: KoaWebsocket.App): Promise<void> {
   running.on('exit', () => {
     running = undefined
 
-    if (hasShow) {
-      console.log('show finished')
+    if (hasMedia) {
+      console.log('media finished')
       broadcast(app, {
         type: 'stop',
-        video: watchingVideo,
-        complete: showFinished,
+        location: playingMedia,
+        complete: mediaFinished,
       })
-      watchingVideo = undefined
+      playingMedia = undefined
 
-      if (showFinished) {
-        // watch the next show if there is one
+      if (mediaFinished) {
+        // watch the next media if there is one
         spawnBabies(app)
       }
     }
   })
 }
 
-// add show to queue and start watching shows if not already watching
-async function enqueueShow(
+// add media to queue and start watching media if not already watching
+async function enqueueMedia(
   app: KoaWebsocket.App,
-  showsState: ShowsState,
+  mediaState: MediaState,
   path: string,
   title?: string,
 ) {
-  const showFullPath = path.startsWith('https://')
+  const mediaFullPath = path.startsWith('https://')
     ? path
-    : pathJoin(showsState.showsDir, path)
+    : pathJoin(mediaState.mediaDir, path)
 
-  const queueCmd = ['babies', 'e', queueDir, showFullPath]
+  const queueCmd = ['babies', 'e', queueDir, mediaFullPath]
   if (title) {
     queueCmd.push('-t', title)
   }
   const enqueueOutput = await run(queueCmd)
-  const enqueuedMessage = yaml.parse(enqueueOutput)?.[0]
-  if (enqueuedMessage) {
-    enqueuedMessage.type = 'enqueued'
-    broadcast(app, enqueuedMessage)
+  const queueEntry = yaml.parse(enqueueOutput)?.[0]
+  if (queueEntry) {
+    broadcast(app, { type: 'enqueued', media: convertQueueEntry(queueEntry) })
   }
 
   if (!running) {
@@ -213,45 +242,45 @@ async function enqueueShow(
   }
 }
 
-async function dequeueShows(app: KoaWebsocket.App, videos: string[]) {
+async function dequeueMedia(app: KoaWebsocket.App, media: string[]) {
   try {
-    await run(['babies', 'de', queueDir, ...videos])
-    broadcast(app, { type: 'dequeued', videos })
+    await run(['babies', 'de', queueDir, ...media])
+    broadcast(app, { type: 'dequeued', media })
 
-    if (running && watchingVideo && videos.includes(watchingVideo)) {
-      // the current video was dequeued, quit it
+    if (running && playingMedia && media.includes(playingMedia)) {
+      // the current media was dequeued, quit it
       running.stdin?.write('q\n')
     }
   } catch (e) {
-    console.warn('Error dequeuing video', e)
-    broadcast(app, { type: 'dequeued', videos: [] })
+    console.warn('Error dequeuing media', e)
+    broadcast(app, { type: 'dequeued', media: [] })
   }
 }
 
 async function listenToSocket(
   app: KoaWebsocket.App,
   ctxt: Context,
-  showsState: ShowsState,
+  mediaState: MediaState,
 ) {
   ctxt.websocket.onmessage = (message) => {
     const payload = JSON.parse(message.data.toString())
     switch (payload.type) {
       case 'enqueue':
         const { path, title } = payload
-        enqueueShow(app, showsState, path, title)
+        enqueueMedia(app, mediaState, path, title)
         break
 
       case 'dequeue':
-        const { videos } = payload
-        dequeueShows(app, videos)
+        const { media } = payload
+        dequeueMedia(app, media)
         break
 
       case 'resume-playlist':
         spawnBabies(app)
         break
 
-      case 'show-list':
-        sendShowList(ctxt, showsState)
+      case 'media-list':
+        sendMediaList(ctxt, mediaState)
         break
 
       case 'toggle-pause':
@@ -278,8 +307,8 @@ async function listenToSocket(
 }
 
 async function main(): Promise<void> {
-  const showsState = {
-    showsDir: process.argv[2] || defaultShowsDir,
+  const mediaState = {
+    mediaDir: process.argv[2] || defaultMediaDir,
   }
   const app = KoaWebsocket.default(new App())
 
@@ -291,8 +320,8 @@ async function main(): Promise<void> {
 
   app.ws.use((ctxt, next) => {
     console.debug('got websocket')
-    sendShowList(ctxt, showsState)
-    listenToSocket(app, ctxt, showsState)
+    sendMediaList(ctxt, mediaState)
+    listenToSocket(app, ctxt, mediaState)
     return next()
   })
 }

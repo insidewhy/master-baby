@@ -20,7 +20,7 @@
 
   const deleteSelections = () => {
     pendingOperation = true
-    sendMessage({ type: 'dequeue', videos: Array.from(selections) })
+    sendMessage({ type: 'dequeue', media: Array.from(selections) })
   }
 </script>
 

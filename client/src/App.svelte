@@ -8,15 +8,15 @@
   import FaPause from 'svelte-icons/fa/FaPause.svelte'
   import FaPlay from 'svelte-icons/fa/FaPlay.svelte'
 
-  import QueuedVideo from './QueuedVideo.svelte'
+  import QueuedMedia from './QueuedMedia.svelte'
   import QueueControls from './QueueControls.svelte'
   import Search from './Search.svelte'
   import Loading from './Loading.svelte'
   import { onLocationChange, setLocation } from './location.js'
 
   let ws
-  let watchingVideo
-  let showList = []
+  let playingMedia
+  let mediaList = []
   let queue = []
   let queueTitles
   let queueSelections = new Set()
@@ -43,7 +43,7 @@
     }
   }
 
-  const startShow = (path, title) => {
+  const startMedia = (path, title) => {
     const message = { type: 'enqueue', path }
     if (title) {
       message.title = title
@@ -56,7 +56,7 @@
   }
 
   const handlePlay = () => {
-    if (! watchingVideo) {
+    if (! playingMedia) {
       sendMessageWithType('resume-playlist')
     } else {
       sendMessageWithType('toggle-pause')
@@ -66,31 +66,31 @@
   const processTime = (time) =>
     time.replace(/^0:0*:?/, '').replace(/\.\d+$/, '')
 
-  const processQueueEntry = (queueEntry) => {
-    const { title, video } = queueEntry
-    const displayTitle = title || (video.startsWith('https://') ? video : video.replace(/.*\//, ''))
+  const processQueueEntry = (media) => {
+    const { title, location } = media
+    const displayTitle = title || (location.startsWith('https://') ? location : location.replace(/.*\//, ''))
     queueTitles.add(displayTitle)
 
-    if (queueEntry.duration) {
-      queueEntry.duration = processTime(queueEntry.duration)
-      if (queueEntry.viewings) {
-        const position = queueEntry.viewings[queueEntry.viewings.length - 1].end
+    if (media.duration) {
+      media.duration = processTime(media.duration)
+      if (media.sessions) {
+        const position = media.sessions[media.sessions.length - 1].end
         if (position) {
-          queueEntry.position = processTime(position.replace(/.* /, ''))
+          media.position = processTime(position.replace(/.* /, ''))
         }
-        delete queueEntry.viewings
+        delete media.sessions
       }
     }
 
-    return { ...queueEntry, displayTitle }
+    return { ...media, displayTitle }
   }
 
-  const updateShowQueueState = () => {
-    showList.forEach(show => {
-      if (queueTitles.has(show.video)) {
-        show.isQueued = true
+  const updateMediaQueueState = () => {
+    mediaList.forEach(media => {
+      if (queueTitles.has(media.location)) {
+        media.isQueued = true
       } else {
-        show.isQueued = false
+        media.isQueued = false
       }
     })
   }
@@ -106,18 +106,18 @@
     onMessage.emit(data)
 
     switch (data.type) {
-      case 'shows': {
+      case 'media': {
         queueTitles = new Set()
-        watchingVideo = data.watchingVideo
+        playingMedia = data.playingMedia
         paused = data.paused
         queue = data.queue.map(processQueueEntry)
-        showList = data.list
-        updateShowQueueState()
+        mediaList = data.list
+        updateMediaQueueState()
         break
       }
 
       case 'start':
-        watchingVideo = data.video
+        playingMedia = data.location
         break
 
       case 'paused':
@@ -129,25 +129,25 @@
         break
 
       case 'stop':
-        watchingVideo = undefined
-        // TODO: only refresh show that stopped
-        sendMessage({ type: 'show-list' })
+        playingMedia = undefined
+        // TODO: only refresh media that stopped
+        sendMessage({ type: 'media-list' })
         break
 
       case 'enqueued': {
-        const { type, ...queueEntry } = data
-        const newEntry = processQueueEntry(queueEntry)
+        const { type, media } = data
+        const newEntry = processQueueEntry(media)
         queue = [...queue, newEntry]
 
-        showList.some((show, idx) => {
-          if (show.video === newEntry.displayTitle) {
+        mediaList.some((media, idx) => {
+          if (media.location === newEntry.displayTitle) {
             // weird indexness for svelte :(
-            showList[idx].isQueued = true
+            mediaList[idx].isQueued = true
             return true
           }
         })
-        searchResults.some((show, idx) => {
-          if (show.title === newEntry.displayTitle) {
+        searchResults.some((media, idx) => {
+          if (media.title === newEntry.displayTitle) {
             searchResults[idx].isQueued = true
             return true
           }
@@ -157,18 +157,18 @@
       }
 
       case 'dequeued': {
-        const { videos } = data
-        const videosSet = new Set(videos)
+        const { media } = data
+        const mediaSet = new Set(media)
         queueTitles = new Set()
         queue = queue.filter(queued => {
-          if (videosSet.has(queued.video)) {
+          if (mediaSet.has(queued.location)) {
             return false
           } else {
             queueTitles.add(queued.displayTitle)
             return true
           }
         })
-        updateShowQueueState()
+        updateMediaQueueState()
         updateSearchResultQueueState()
         break
       }
@@ -208,7 +208,7 @@
     connectingWs.onclose = () => {
       if (!closed) {
         if (connectingWs === ws) {
-          watchingVideo = undefined
+          playingMedia = undefined
           ws = undefined
         }
         console.log('websocket closed, trying again')
@@ -282,27 +282,27 @@
   {#if searchResults.length}
     {#each searchResults as result}
       <li
-        on:click={() => { startShow(result.video, result.title) }}
-        class:watching={watchingVideo === result.video}
+        on:click={() => { startMedia(result.location, result.title) }}
+        class:watching={playingMedia === result.location}
         class:queued={result.isQueued}
       >{result.title}</li>
     {/each}
   {:else}
     {#if queueOpen}
       {#each queue as queued}
-        <QueuedVideo
-          watching={watchingVideo === queued.displayTitle || watchingVideo === queued.video}
+        <QueuedMedia
+          watching={playingMedia === queued.displayTitle || playingMedia === queued.location}
           queued={queued}
           bind:queueSelections={queueSelections}
         />
       {/each}
     {:else}
-      {#each showList as show}
+      {#each mediaList as media}
         <li
-          on:click={() => { startShow(show.path) }}
-          class:watching={watchingVideo === show.video}
-          class:queued={show.isQueued}
-        >{show.video}</li>
+          on:click={() => { startMedia(media.path) }}
+          class:watching={playingMedia === media.location}
+          class:queued={media.isQueued}
+        >{media.location}</li>
       {/each}
     {/if}
   {/if}
@@ -318,12 +318,12 @@
   {#if !ws}
     <Loading />
   {:else}
-    {#if ! watchingVideo || paused}
+    {#if ! playingMedia || paused}
       <button on:click={() => handlePlay()}><FaPlay /></button>
     {:else}
       <button on:click={() => sendMessageWithType('toggle-pause')}><FaPause /></button>
     {/if}
-    {#if watchingVideo}
+    {#if playingMedia}
       <button on:click={() => { sendMessageWithType("volume-down") }}>
         <FaVolumeDown />
       </button>

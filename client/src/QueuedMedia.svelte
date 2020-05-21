@@ -4,10 +4,10 @@
   export let queueSelections
 
   const onClickQueueEntry = queueEntry => {
-    if (queueSelections.has(queued.video)) {
-      queueSelections.delete(queued.video)
+    if (queueSelections.has(queued.location)) {
+      queueSelections.delete(queued.location)
     } else {
-      queueSelections.add(queued.video)
+      queueSelections.add(queued.location)
     }
     // sigh svelte
     queueSelections = queueSelections
@@ -34,7 +34,7 @@
 
 <li
   class:watching={watching}
-  class:selected={queueSelections.has(queued.video)}
+  class:selected={queueSelections.has(queued.location)}
   on:click={onClickQueueEntry}
 >
   {queued.displayTitle}
