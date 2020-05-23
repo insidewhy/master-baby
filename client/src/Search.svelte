@@ -2,12 +2,15 @@
   import FaSearch from 'svelte-icons/fa/FaSearch.svelte'
   import FaTimes from 'svelte-icons/fa/FaTimes.svelte'
   import FaSpinner from 'svelte-icons/fa/FaSpinner.svelte'
+  import FaYoutube from 'svelte-icons/fa/FaYoutube.svelte'
+  import FaSpotify from 'svelte-icons/fa/FaSpotify.svelte'
   import { handleMessages } from './handleMessages.js'
   import { setLocation, onLocationChange } from './location.js'
 
   export let sendMessage
   export let onSearchResults
   export let onMessage
+  export let searchService
 
   let searching = false
   let searchTerms = ''
@@ -16,10 +19,20 @@
   onLocationChange(({ path, params }) => {
     if (path === '/search') {
       searchTerms = params.terms || ''
+      searchService = params.service
 
       if (searchTerms) {
         searching = true
-        sendMessage({ type: 'search', terms: searchTerms, duration: searchDuration })
+        if (searchService === 'youtube') {
+          sendMessage({
+            type: 'search',
+            terms: searchTerms,
+            duration: searchDuration,
+            service: 'youtube'
+          })
+        } else {
+          sendMessage({ type: 'search', terms: searchTerms, service: searchService })
+        }
       } else {
         searching = false
         onSearchResults([])
@@ -39,7 +52,7 @@
   }
 
   const setSearch = () => {
-    setLocation('/search', { terms: searchTerms })
+    setLocation('/search', { terms: searchTerms, service: searchService })
   }
 
   const closeSearch = () => {
@@ -72,6 +85,14 @@
     padding: 0.7rem;
     color: $button-color;
     align-self: stretch;
+
+    &.toggle {
+      color: #ddd;
+
+      &.active {
+        color: $button-color;
+      }
+    }
   }
 
   .search-terms {
@@ -89,6 +110,12 @@
   label {
     align-items: center;
     font-family: sans-serif;
+    margin-right: 1rem;
+    visibility: hidden;
+
+    &.visible {
+      visibility: visible;
+    }
   }
 
   select {
@@ -123,7 +150,7 @@
     <button type="button" on:click={closeSearch}><FaTimes /></button>
   </div>
   <div>
-    <label>
+    <label class:visible={searchService === 'youtube'}>
       duration:
       <select bind:value={searchDuration}>
         <option>any</option>
@@ -132,5 +159,17 @@
         <option>short</option>
       </select>
     </label>
+    <button
+      type="button"
+      class="toggle"
+      class:active={searchService === 'youtube'}
+      on:click={() => { searchService = 'youtube' }}
+    ><FaYoutube /></button>
+    <button
+      type="button"
+      class="toggle"
+      class:active={searchService === 'spotify'}
+      on:click={() => { searchService = 'spotify' }}
+    ><FaSpotify /></button>
   </div>
 </form>

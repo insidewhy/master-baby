@@ -20,6 +20,8 @@
   let queue = []
   let queueTitles
   let queueSelections = new Set()
+  // youtube or spotify
+  let searchService = 'youtube'
   const onMessage = new EventEmitter()
 
   // search binds
@@ -332,10 +334,11 @@
           <FaVolumeUp />
         </button>
       {/if}
-      <button on:click={() => setLocation('/search')}><FaSearch /></button>
+      <button on:click={() => setLocation('/search', { service: searchService })}><FaSearch /></button>
     {/if}
     {#if searchOpen}
       <Search
+        bind:searchService={searchService}
         sendMessage={sendMessage}
         onMessage={onMessage}
         onSearchResults={setSearchResults}

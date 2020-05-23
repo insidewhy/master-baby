@@ -124,15 +124,33 @@ async function sendMediaList(ctxt: Context, mediaState: MediaState) {
   )
 }
 
-async function sendSearch(ctxt: Context, terms: string, duration: string) {
+async function sendSearch(
+  ctxt: Context,
+  terms: string,
+  service: string,
+  { duration }: { duration: string },
+) {
   try {
-    const babiesOutput = await run(['babies', 'syt', '-d', duration, terms])
+    const searchYoutube = service === 'youtube'
+
+    const babiesOutput = searchYoutube
+      ? await run(['babies', 'syt', '-d', duration, terms])
+      : await run(['babies', 'ss', terms])
+
     const results = yaml.parse(babiesOutput)
 
-    results.forEach((result: any) => {
-      result.location = `https://youtube.com/watch?v=${result.id}`
-      delete result.id
-    })
+    if (searchYoutube) {
+      results.forEach((result: any) => {
+        result.location = `https://youtube.com/watch?v=${result.id}`
+        delete result.id
+      })
+    } else {
+      results.forEach((result: any) => {
+        result.location = result.uri
+        delete result.uri
+        result.title = `${result.artist} - ${result.album} - ${result.name}`
+      })
+    }
 
     ctxt.websocket.send(
       JSON.stringify({
@@ -296,8 +314,8 @@ async function listenToSocket(
         break
 
       case 'search':
-        const { terms, duration } = payload
-        sendSearch(ctxt, terms, duration)
+        const { terms, duration, service } = payload
+        sendSearch(ctxt, terms, service, { duration })
         break
 
       default:
