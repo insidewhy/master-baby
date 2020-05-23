@@ -318,20 +318,20 @@
   {#if !ws}
     <Loading />
   {:else}
-    {#if ! playingMedia || paused}
-      <button on:click={() => handlePlay()}><FaPlay /></button>
-    {:else}
-      <button on:click={() => sendMessageWithType('toggle-pause')}><FaPause /></button>
-    {/if}
-    {#if playingMedia}
-      <button on:click={() => { sendMessageWithType("volume-down") }}>
-        <FaVolumeDown />
-      </button>
-      <button on:click={() => { sendMessageWithType("volume-up") }}>
-        <FaVolumeUp />
-      </button>
-    {/if}
     {#if !searchOpen}
+      {#if ! playingMedia || paused}
+        <button on:click={() => handlePlay()}><FaPlay /></button>
+      {:else}
+        <button on:click={() => sendMessageWithType('toggle-pause')}><FaPause /></button>
+      {/if}
+      {#if playingMedia}
+        <button on:click={() => { sendMessageWithType("volume-down") }}>
+          <FaVolumeDown />
+        </button>
+        <button on:click={() => { sendMessageWithType("volume-up") }}>
+          <FaVolumeUp />
+        </button>
+      {/if}
       <button on:click={() => setLocation('/search')}><FaSearch /></button>
     {/if}
     {#if searchOpen}
