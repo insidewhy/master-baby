@@ -66,7 +66,8 @@ const basenameOfFile = (urlOrFile: string) => {
 interface BabiesQueueEntry {
   title?: string
   duration?: string
-  video: string
+  video?: string
+  audio?: string
   viewings?: unknown[]
 }
 interface MasterBabyQueueEntry {
@@ -78,11 +79,12 @@ interface MasterBabyQueueEntry {
 
 function convertQueueEntry({
   video,
+  audio,
   title,
   viewings,
   duration,
 }: BabiesQueueEntry): MasterBabyQueueEntry {
-  const converted: MasterBabyQueueEntry = { location: video }
+  const converted: MasterBabyQueueEntry = { location: (video || audio)! }
   if (title) {
     converted.title = title
   }
@@ -241,9 +243,10 @@ async function enqueueMedia(
   path: string,
   title?: string,
 ) {
-  const mediaFullPath = path.startsWith('https://')
-    ? path
-    : pathJoin(mediaState.mediaDir, path)
+  const mediaFullPath =
+    path.startsWith('https://') || path.startsWith('spotify:')
+      ? path
+      : pathJoin(mediaState.mediaDir, path)
 
   const queueCmd = ['babies', 'e', queueDir, mediaFullPath]
   if (title) {
