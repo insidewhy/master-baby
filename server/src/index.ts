@@ -13,6 +13,7 @@ const defaultMediaDir = `${process.env.HOME}/shows`
 let running: ChildProcess | undefined
 let paused = false
 let playingMedia: string | undefined
+let mediaPosition: { position: string; duration: string } | undefined
 
 const queueDir = pathJoin(xdgData!, 'master-baby', 'queue')
 const queueFile = pathJoin(queueDir, '.videos.yaml')
@@ -115,7 +116,8 @@ async function sendMediaList(ctxt: Context, mediaState: MediaState) {
   ctxt.websocket.send(
     JSON.stringify({
       type: 'media',
-      playingMedia,
+      playing: playingMedia,
+      position: mediaPosition,
       paused,
       list: media.map((mediaFile) => ({
         path: basename(mediaFile.path),
@@ -182,7 +184,6 @@ async function spawnBabies(app: KoaWebsocket.App): Promise<void> {
     stdio: ['pipe', 'pipe', 'inherit'],
   })
 
-  let hasMedia = false
   let mediaFinished = false
   running.stdout!.on('data', (data: Buffer) => {
     const lines = data.toString()
@@ -193,15 +194,21 @@ async function spawnBabies(app: KoaWebsocket.App): Promise<void> {
       .forEach((line) => {
         line = line.trimRight()
         if (line.startsWith('start: ')) {
-          if (!hasMedia) {
-            paused = false
-            hasMedia = true
-            playingMedia = basenameOfFile(line.slice(7))
-            broadcast(app, { type: 'start', location: playingMedia })
-          }
-        }
-
-        if (line.startsWith('end: ')) {
+          paused = false
+          playingMedia = basenameOfFile(line.slice(7))
+          broadcast(app, {
+            type: 'start',
+            location: playingMedia,
+          })
+        } else if (line.startsWith('position: ')) {
+          const [position, duration] = line.slice(10).split('/')
+          mediaPosition = { position, duration }
+          broadcast(app, {
+            type: 'position',
+            position,
+            duration,
+          })
+        } else if (line.startsWith('end: ')) {
           const [position, duration] = line.slice(5).split('/')
           mediaFinished = position === duration
         } else if (line.startsWith('pause: ')) {
@@ -219,7 +226,7 @@ async function spawnBabies(app: KoaWebsocket.App): Promise<void> {
   running.on('exit', () => {
     running = undefined
 
-    if (hasMedia) {
+    if (playingMedia) {
       console.log('media finished')
       broadcast(app, {
         type: 'stop',
@@ -227,6 +234,7 @@ async function spawnBabies(app: KoaWebsocket.App): Promise<void> {
         complete: mediaFinished,
       })
       playingMedia = undefined
+      mediaPosition = undefined
 
       if (mediaFinished) {
         // watch the next media if there is one

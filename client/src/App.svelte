@@ -13,9 +13,11 @@
   import Search from './Search.svelte'
   import Loading from './Loading.svelte'
   import { onLocationChange, setLocation } from './location.js'
+  import { shortenTime } from './format.js'
 
   let ws
   let playingMedia
+  let mediaPosition
   let mediaList = []
   let queue = []
   let queueTitles
@@ -65,20 +67,17 @@
     }
   }
 
-  const processTime = (time) =>
-    time.replace(/^0:0*:?/, '').replace(/\.\d+$/, '')
-
   const processQueueEntry = (media) => {
     const { title, location } = media
     const displayTitle = title || (location.startsWith('https://') ? location : location.replace(/.*\//, ''))
     queueTitles.add(displayTitle)
 
     if (media.duration) {
-      media.duration = processTime(media.duration)
+      media.duration = shortenTime(media.duration)
       if (media.sessions) {
         const position = media.sessions[media.sessions.length - 1].end
         if (position) {
-          media.position = processTime(position.replace(/.* /, ''))
+          media.position = shortenTime(position.replace(/.* /, ''))
         }
         delete media.sessions
       }
@@ -110,7 +109,8 @@
     switch (data.type) {
       case 'media': {
         queueTitles = new Set()
-        playingMedia = data.playingMedia
+        playingMedia = data.playing
+        mediaPosition = data.position
         paused = data.paused
         queue = data.queue.map(processQueueEntry)
         mediaList = data.list
@@ -120,6 +120,10 @@
 
       case 'start':
         playingMedia = data.location
+        break
+
+      case 'position':
+        mediaPosition = { position: data.position, duration: data.duration }
         break
 
       case 'paused':
@@ -132,6 +136,7 @@
 
       case 'stop':
         playingMedia = undefined
+        mediaPosition = undefined
         // TODO: only refresh media that stopped
         sendMessage({ type: 'media-list' })
         break
@@ -255,6 +260,10 @@
         background-color: #a92dce;
       }
     }
+
+    :global(> li .position) {
+      margin-left: auto;
+    }
   }
 
   footer {
@@ -304,7 +313,13 @@
           on:click={() => { startMedia(media.path) }}
           class:watching={playingMedia === media.location}
           class:queued={media.isQueued}
-        >{media.location}</li>
+        >
+          <span>{media.location}</span>
+          {#if playingMedia === media.location && mediaPosition}
+            <span class="position">
+              {shortenTime(mediaPosition.position)} / {shortenTime(mediaPosition.duration)}
+            </span>
+          {/if}
       {/each}
     {/if}
   {/if}
