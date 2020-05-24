@@ -73,7 +73,6 @@
     queueTitles.add(displayTitle)
 
     if (media.duration) {
-      // TODO: normalise queued duration/position with db
       media.duration = shortenTime(media.duration)
       if (media.sessions) {
         const position = media.sessions[media.sessions.length - 1].end
@@ -112,7 +111,12 @@
       case 'media': {
         queueTitles = new Set()
         playingMedia = data.playing
-        mediaPosition = data.position
+        if (data.position) {
+          mediaPosition = {
+            position: shortenTime(data.position.position),
+            duration: shortenTime(data.position.duration),
+          }
+        }
         paused = data.paused
         queue = data.queue.map(processQueueEntry)
         mediaList = data.list
@@ -125,11 +129,13 @@
         break
 
       case 'position':
-        mediaPosition = { position: data.position, duration: data.duration }
+        mediaPosition = {
+          position: shortenTime(data.position),
+          duration: shortenTime(data.duration)
+        }
         if (
           queue.some(queued => {
             if (queued.location === playingMedia) {
-              // TODO: normalise queued duration/position with db
               queued.position = shortenTime(data.position)
               queued.duration =  shortenTime(data.duration)
               return true
@@ -275,9 +281,12 @@
       }
     }
 
-    :global(> li .position) {
+    :global(> li .duration) {
       margin-left: auto;
+      white-space: nowrap;
+      padding-left: 0.7em;
     }
+
   }
 
   footer {
@@ -330,8 +339,12 @@
         >
           <span>{media.location}</span>
           {#if playingMedia === media.location && mediaPosition}
-            <span class="position">
-              {shortenTime(mediaPosition.position)} / {shortenTime(mediaPosition.duration)}
+            <span class="duration">
+              {#if mediaPosition.position}
+                {mediaPosition.position} /
+              {/if}
+
+              {mediaPosition.duration}
             </span>
           {/if}
       {/each}

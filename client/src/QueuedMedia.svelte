@@ -16,12 +16,6 @@
 
 <style type="text/scss">
   li {
-    .duration {
-      margin-left: auto;
-      white-space: nowrap;
-      padding-left: 0.7em;
-    }
-
     &.selected {
       background-color: #ffdddd;
 
