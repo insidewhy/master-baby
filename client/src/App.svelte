@@ -73,10 +73,12 @@
     queueTitles.add(displayTitle)
 
     if (media.duration) {
+      // TODO: normalise queued duration/position with db
       media.duration = shortenTime(media.duration)
       if (media.sessions) {
         const position = media.sessions[media.sessions.length - 1].end
         if (position) {
+          // remove everything before the " at "
           media.position = shortenTime(position.replace(/.* /, ''))
         }
         delete media.sessions
@@ -124,6 +126,18 @@
 
       case 'position':
         mediaPosition = { position: data.position, duration: data.duration }
+        if (
+          queue.some(queued => {
+            if (queued.location === playingMedia) {
+              // TODO: normalise queued duration/position with db
+              queued.position = shortenTime(data.position)
+              queued.duration =  shortenTime(data.duration)
+              return true
+            }
+          })
+        ) {
+          queue = queue
+        }
         break
 
       case 'paused':
