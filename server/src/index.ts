@@ -276,7 +276,13 @@ async function dequeueMedia(app: KoaWebsocket.App, media: string[]) {
     await run(['babies', 'de', queueDir, ...media])
     broadcast(app, { type: 'dequeued', media })
 
-    if (running && playingMedia && media.includes(playingMedia)) {
+    if (
+      running &&
+      playingMedia &&
+      media.some(
+        (dequeueEntry) => basenameOfFile(dequeueEntry) === playingMedia,
+      )
+    ) {
       // the current media was dequeued, quit it
       running.stdin?.write('q\n')
     }
