@@ -152,7 +152,11 @@ async function sendSearch(
       results.forEach((result: any) => {
         result.location = result.uri
         delete result.uri
-        result.title = `${result.artist} - ${result.album} - ${result.name}`
+        if (result.type === 'track') {
+          result.title = `${result.artist} - ${result.album} - ${result.name}`
+        } else {
+          result.title = `${result.name} - ${result.release_date}`
+        }
       })
     }
 
