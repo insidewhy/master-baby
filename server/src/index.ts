@@ -1,6 +1,9 @@
-import App, { Context } from 'koa'
+import App from 'koa'
 import cors from '@koa/cors'
-import * as KoaWebsocket from 'koa-websocket'
+import websockify, {
+  MiddlewareContext,
+  App as WebsocketApp,
+} from 'koa-websocket'
 import { data as xdgData } from 'xdg-basedir'
 import { join as pathJoin, basename } from 'path'
 import { spawn, exec, ChildProcess } from 'child_process'
@@ -71,6 +74,7 @@ interface BabiesQueueEntry {
   audio?: string
   viewings?: unknown[]
 }
+
 interface MasterBabyQueueEntry {
   title?: string
   duration?: string
@@ -98,7 +102,10 @@ function convertQueueEntry({
   return converted
 }
 
-async function sendMediaList(ctxt: Context, mediaState: MediaState) {
+async function sendMediaList(
+  ctxt: MiddlewareContext<any>,
+  mediaState: MediaState,
+) {
   const babiesOutput = await runShell(`babies p -vi ${mediaState.mediaDir}/*`)
   const media: Array<{ filename: string; path: string }> = yaml.parse(
     babiesOutput,
@@ -129,7 +136,7 @@ async function sendMediaList(ctxt: Context, mediaState: MediaState) {
 }
 
 async function sendSearch(
-  ctxt: Context,
+  ctxt: MiddlewareContext<any>,
   terms: string,
   service: string,
   { duration }: { duration: string },
@@ -176,14 +183,14 @@ async function sendSearch(
   }
 }
 
-function broadcast(app: KoaWebsocket.App, data: object) {
+function broadcast(app: WebsocketApp, data: object) {
   const dataStr = JSON.stringify(data)
   app.ws.server?.clients.forEach((client) => {
     client.send(dataStr)
   })
 }
 
-async function spawnBabies(app: KoaWebsocket.App): Promise<void> {
+async function spawnBabies(app: WebsocketApp): Promise<void> {
   running = spawn('babies', ['n', queueDir], {
     stdio: ['pipe', 'pipe', 'inherit'],
   })
@@ -250,7 +257,7 @@ async function spawnBabies(app: KoaWebsocket.App): Promise<void> {
 
 // add media to queue and start watching media if not already watching
 async function enqueueMedia(
-  app: KoaWebsocket.App,
+  app: WebsocketApp,
   mediaState: MediaState,
   path: string,
   title?: string,
@@ -275,7 +282,7 @@ async function enqueueMedia(
   }
 }
 
-async function dequeueMedia(app: KoaWebsocket.App, media: string[]) {
+async function dequeueMedia(app: WebsocketApp, media: string[]) {
   try {
     await run(['babies', 'de', queueDir, ...media])
     broadcast(app, { type: 'dequeued', media })
@@ -297,11 +304,11 @@ async function dequeueMedia(app: KoaWebsocket.App, media: string[]) {
 }
 
 async function listenToSocket(
-  app: KoaWebsocket.App,
-  ctxt: Context,
+  app: WebsocketApp,
+  ctxt: MiddlewareContext<any>,
   mediaState: MediaState,
 ) {
-  ctxt.websocket.onmessage = (message) => {
+  ctxt.websocket.onmessage = (message: any) => {
     const payload = JSON.parse(message.data.toString())
     switch (payload.type) {
       case 'enqueue':
@@ -349,7 +356,8 @@ async function main(): Promise<void> {
   const mediaState = {
     mediaDir: process.argv[2] || defaultMediaDir,
   }
-  const app = KoaWebsocket.default(new App())
+  // TODO: why "as any"
+  const app = websockify(new App() as any)
 
   await ensureDir(queueDir)
   app.use(cors())

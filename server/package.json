@@ -8,20 +8,20 @@
     "dev": "nodemon -e ts --watch src --delay 0.3 --exec yarn start"
   },
   "dependencies": {
-    "@koa/cors": "^3.0.0",
-    "@types/koa": "^2.11.3",
-    "fs-extra": "^9.0.0",
-    "koa": "^2.11.0",
+    "@koa/cors": "^3.1.0",
+    "@types/koa": "^2.11.6",
+    "fs-extra": "^9.0.1",
+    "koa": "^2.13.0",
     "koa-websocket": "^6.0.0",
-    "ts-node": "^8.9.1",
+    "ts-node": "^9.1.1",
     "xdg-basedir": "^4.0.0",
-    "yaml": "^1.9.2"
+    "yaml": "^1.10.0"
   },
   "devDependencies": {
-    "@types/fs-extra": "^8.1.0",
-    "@types/koa-websocket": "^5.0.4",
-    "@types/koa__cors": "^3.0.1",
-    "nodemon": "^2.0.3",
-    "typescript": "^3.8.3"
+    "@types/fs-extra": "^9.0.6",
+    "@types/koa-websocket": "^5.0.5",
+    "@types/koa__cors": "^3.0.2",
+    "nodemon": "^2.0.6",
+    "typescript": "^4.1.3"
   }
 }
