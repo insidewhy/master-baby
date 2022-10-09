@@ -1,7 +1,5 @@
 <script>
   export let sortOrder
-  export let setSortOrder
-  let newSortOrder
 </script>
 <style lang="scss">
   section {
@@ -24,8 +22,8 @@
 <section>
   <label>
     Sort order:
-    <select bind:value={sortOrder} on:change={() => { setSortOrder(sortOrder) }}>
-      <option value="name">Media name</option>
+    <select bind:value={sortOrder}>
+      <option value="location">Media location</option>
       <option value="mtime">Last Modified</option>
     </select>
   </label>

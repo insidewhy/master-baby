@@ -34,7 +34,7 @@
   let settingsOpen = false
   let paused = false
   let searchResults = []
-  let sortOrder = window.localStorage.getItem('sortOrder')
+  let sortOrder = window.localStorage.getItem('sortOrder') ?? 'location'
 
   onLocationChange(({ path }) => {
     searchOpen = path === '/search'
@@ -134,11 +134,16 @@
     }
   }
 
-  const setSortOrder = (newSortOrder) => {
-    sortOrder = newSortOrder
-    window.localStorage.setItem('sortOrder', sortOrder)
-    mediaList = sortMediaList(mediaList)
+  let prevSortOrder = sortOrder
+  const updateSortOrder = () => {
+    if (prevSortOrder !== sortOrder) {
+      prevSortOrder = sortOrder
+      window.localStorage.setItem('sortOrder', sortOrder)
+      mediaList = sortMediaList(mediaList)
+    }
   }
+
+  $: sortOrder, updateSortOrder()
 
   const handleWebsocketMessage = (message) => {
     const data = JSON.parse(message.data)
@@ -398,7 +403,7 @@
     <Loading />
   {:else}
     {#if settingsOpen}
-      <Settings sortOrder={sortOrder} setSortOrder={setSortOrder} />
+      <Settings bind:sortOrder />
     {/if}
     {#if !searchOpen}
       {#if ! playingMedia || paused}
