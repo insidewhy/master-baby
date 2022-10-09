@@ -138,6 +138,19 @@ async function sendMediaList(
   )
 }
 
+async function sendDisplays(ctxt: MiddlewareContext<any>) {
+  const babiesOutput = await runShell(`babies gd -v`)
+  const output: Array<{
+    displays: string[]
+    current: string
+  }> = yaml.parse(babiesOutput)
+  ctxt.websocket.send(JSON.stringify({ type: 'displays', ...output }))
+}
+
+async function setDisplay(newDisplay: string) {
+  await runShell(`babies sd ${newDisplay}`)
+}
+
 async function sendSearch(
   ctxt: MiddlewareContext<any>,
   terms: string,
@@ -330,6 +343,14 @@ async function listenToSocket(
 
       case 'media-list':
         sendMediaList(ctxt, mediaState)
+        break
+
+      case 'get-displays':
+        sendDisplays(ctxt)
+        break
+
+      case 'set-display':
+        setDisplay(payload.display)
         break
 
       case 'toggle-pause':

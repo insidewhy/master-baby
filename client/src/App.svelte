@@ -403,7 +403,11 @@
     <Loading />
   {:else}
     {#if settingsOpen}
-      <Settings bind:sortOrder />
+      <Settings
+        bind:sortOrder
+        onMessage={onMessage}
+        sendMessage={sendMessage}
+       />
     {/if}
     {#if !searchOpen}
       {#if ! playingMedia || paused}
