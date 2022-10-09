@@ -3,6 +3,7 @@
   import FaListOl from 'svelte-icons/fa/FaListOl.svelte'
   import FaVolumeDown from 'svelte-icons/fa/FaVolumeDown.svelte'
   import FaVolumeUp from 'svelte-icons/fa/FaVolumeUp.svelte'
+  import FaCog from 'svelte-icons/fa/FaCog.svelte'
   import FaSearch from 'svelte-icons/fa/FaSearch.svelte'
   import FaTimes from 'svelte-icons/fa/FaTimes.svelte'
   import FaPause from 'svelte-icons/fa/FaPause.svelte'
@@ -11,6 +12,7 @@
   import QueuedMedia from './QueuedMedia.svelte'
   import QueueControls from './QueueControls.svelte'
   import Search from './Search.svelte'
+  import Settings from './Settings.svelte'
   import Loading from './Loading.svelte'
   import { onLocationChange, setLocation } from './location.js'
   import { shortenTime } from './format.js'
@@ -29,11 +31,14 @@
   // search binds
   let searchOpen = false
   let queueOpen = false
+  let settingsOpen = false
   let paused = false
   let searchResults = []
+  let sortOrder = window.localStorage.getItem('sortOrder')
 
   onLocationChange(({ path }) => {
     searchOpen = path === '/search'
+    settingsOpen = path === '/settings'
     const nextQueueOpen = path === '/queue'
     if (! queueOpen && nextQueueOpen) {
       queueSelections = new Set()
@@ -103,6 +108,38 @@
     })
   }
 
+  // ignore stuff at the beginning of line between square brackets, it's usually the
+  // subgroup or studio
+  const getLocationSortKey = (location) => location.replace(/\[[^\]]+\]\s+/, '').toLowerCase()
+
+  const compareLocations = (a, b) => {
+    const aLocation = getLocationSortKey(a.location)
+    const bLocation = getLocationSortKey(b.location)
+    return aLocation < bLocation ? -1 : 1
+  }
+
+  const sortMediaList = (mediaList) => {
+    if (sortOrder === 'mtime') {
+      return mediaList.sort((a, b) => {
+        if (a.mtime) {
+          return b.mtime ? b.mtime - a.mtime : -1;
+        } else if (b.mtime) {
+          return -1
+        } else {
+          return compareLocations(a, b)
+        }
+      })
+    } else {
+      return mediaList.sort(compareLocations)
+    }
+  }
+
+  const setSortOrder = (newSortOrder) => {
+    sortOrder = newSortOrder
+    window.localStorage.setItem('sortOrder', sortOrder)
+    mediaList = sortMediaList(mediaList)
+  }
+
   const handleWebsocketMessage = (message) => {
     const data = JSON.parse(message.data)
     onMessage.emit(data)
@@ -119,7 +156,7 @@
         }
         paused = data.paused
         queue = data.queue.map(processQueueEntry)
-        mediaList = data.list
+        mediaList = sortMediaList(data.list)
         updateMediaQueueState()
         break
       }
@@ -362,6 +399,9 @@
   {#if !ws}
     <Loading />
   {:else}
+    {#if settingsOpen}
+      <Settings sortOrder={sortOrder} setSortOrder={setSortOrder} />
+    {/if}
     {#if !searchOpen}
       {#if ! playingMedia || paused}
         <button on:click={() => handlePlay()}><FaPlay /></button>
@@ -390,6 +430,11 @@
         <button on:click={() => setLocation('/')}><FaTimes /></button>
       {:else}
         <button on:click={() => setLocation('/queue')}><FaListOl /></button>
+      {/if}
+      {#if settingsOpen}
+        <button on:click={() => setLocation('/')}><FaTimes /></button>
+      {:else}
+        <button on:click={() => setLocation('/settings')}><FaCog /></button>
       {/if}
     {/if}
   {/if}

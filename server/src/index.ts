@@ -106,10 +106,12 @@ async function sendMediaList(
   ctxt: MiddlewareContext<any>,
   mediaState: MediaState,
 ) {
-  const babiesOutput = await runShell(`babies p -vi ${mediaState.mediaDir}/*`)
-  const media: Array<{ filename: string; path: string }> = yaml.parse(
-    babiesOutput,
-  )
+  const babiesOutput = await runShell(`babies p -vim ${mediaState.mediaDir}/*`)
+  const media: Array<{
+    filename: string
+    path: string
+    mtime?: string
+  }> = yaml.parse(babiesOutput)
 
   let data = null
   try {
@@ -129,6 +131,7 @@ async function sendMediaList(
       list: media.map((mediaFile) => ({
         path: basename(mediaFile.path),
         location: basename(mediaFile.filename),
+        mtime: mediaFile.mtime,
       })),
       queue: queue.map(convertQueueEntry),
     }),
