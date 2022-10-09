@@ -61,7 +61,7 @@
   }
 </script>
 
-<style type="text/scss">
+<style lang="scss">
   $line-height: 4.5rem;
   $button-color: #888;
 

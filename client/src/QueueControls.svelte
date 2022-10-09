@@ -24,7 +24,7 @@
   }
 </script>
 
-<style type="text/scss">
+<style lang="scss">
   .queue-controls {
     width: 100%;
     align-items: center;

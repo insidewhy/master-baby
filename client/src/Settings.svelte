@@ -3,7 +3,7 @@
   export let setSortOrder
   let newSortOrder
 </script>
-<style type="text/scss">
+<style lang="scss">
   section {
     width: 100%;
     justify-content: center;

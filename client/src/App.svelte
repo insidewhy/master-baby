@@ -287,15 +287,13 @@
   start()
 </script>
 
-<style type="text/scss">
+<style lang="scss">
   ul {
     flex-grow: 1;
     width: 100%;
-    min-height: 100%;
     list-style: none;
     flex-direction: column;
     overflow-y: scroll;
-    margin-top: 0.5rem;
 
     :global(> li) {
       width: 100%;

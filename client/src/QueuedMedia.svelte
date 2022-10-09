@@ -14,7 +14,7 @@
   }
 </script>
 
-<style type="text/scss">
+<style lang="scss">
   li {
     &.selected {
       background-color: #ffdddd;

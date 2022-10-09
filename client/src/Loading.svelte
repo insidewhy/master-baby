@@ -2,7 +2,7 @@
   import FaSpinner from 'svelte-icons/fa/FaSpinner.svelte'
 </script>
 
-<style type="text/scss">
+<style lang="scss">
   .loading {
     color: #888;
     height: 4.5rem;
