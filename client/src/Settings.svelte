@@ -5,10 +5,54 @@
   export let sortOrder
   export let sendMessage
   export let onMessage
+  export let mediaInfo
+  export let playingMedia
 
   let displays = ['unknown']
   let currentDisplay = 'unknown'
-  let prevCurrentDisplay = currentDisplay
+  let prevCurrentDisplay = 'unknown'
+  let prevActiveAudioTrack = 'unknown'
+  let prevActiveSubTrack = 'unknown'
+
+  onMount(() => {
+    sendMessage({ type: 'get-displays' })
+    prevCurrentDisplay = currentDisplay
+    prevActiveAudioTrack = mediaInfo.activeAudioTrack
+    prevActiveSubTrack = mediaInfo.activeSubTrack
+  })
+
+  const getMediaInfo = () => {
+    if (playingMedia && !mediaInfo.subTracks.length && !mediaInfo.audioTracks.length) {
+      sendMessage({ type: 'get-media-info' })
+    }
+  }
+
+  $: playingMedia, getMediaInfo()
+
+  const setActiveSubTrack = () => {
+    if (
+      mediaInfo.activeSubTrack &&
+      mediaInfo.activeSubTrack !== 'unknown' &&
+      mediaInfo.activeSubTrack !== prevActiveSubTrack)
+    {
+      prevActiveSubTrack = mediaInfo.activeSubTrack
+      sendMessage({ type: 'set-sid', value: mediaInfo.activeSubTrack })
+    }
+  }
+
+  const setActiveAudioTrack = () => {
+    if (
+      mediaInfo.activeAudioTrack &&
+      mediaInfo.activeAudioTrack !== 'unknown' &&
+      mediaInfo.activeAudioTrack !== prevActiveAudioTrack)
+    {
+      prevActiveAudioTrack = mediaInfo.activeAudioTrack
+      sendMessage({ type: 'set-aid', value: mediaInfo.activeAudioTrack })
+    }
+  }
+
+  $: mediaInfo.activeSubTrack, setActiveSubTrack()
+  $: mediaInfo.activeAudioTrack, setActiveAudioTrack()
 
   handleMessages(onMessage, (data) => {
     if (data.type === 'displays') {
@@ -18,10 +62,6 @@
         displays.unshift('unknown')
       }
     }
-  })
-
-  onMount(() => {
-    sendMessage({ type: 'get-displays' })
   })
 
   const setDisplay = () => {
@@ -41,8 +81,9 @@
     width: 100%;
     justify-content: center;
     align-items: center;
-    padding: 0.5rem;
+    padding: 0.5rem 0.2rem;
     gap: 1.4rem;
+    flex-wrap: wrap;
   }
 
   label {
@@ -71,4 +112,24 @@
       {/each}
     </select>
   </label>
+  {#if mediaInfo.audioTracks.length > 1}
+    <label>
+      Audio:
+      <select bind:value={mediaInfo.activeAudioTrack}>
+        {#each mediaInfo.audioTracks as audioTrack}
+          <option value={audioTrack[0]}>{audioTrack[1]}</option>
+        {/each}
+      </select>
+    </label>
+  {/if}
+  {#if mediaInfo.subTracks.length > 1}
+    <label>
+      Subs:
+      <select bind:value={mediaInfo.activeSubTrack}>
+        {#each mediaInfo.subTracks as subTrack}
+          <option value={subTrack[0]}>{subTrack[1]}</option>
+        {/each}
+      </select>
+    </label>
+  {/if}
 </section>

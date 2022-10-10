@@ -36,6 +36,15 @@
   let searchResults = []
   let sortOrder = window.localStorage.getItem('sortOrder') ?? 'location'
 
+  // audio/sub tracks
+  const getDefaultMediaInfo = () => ({
+    activeAudioTrack: 'unknown',
+    audioTracks: [],
+    activeSubTrack: 'unknown',
+    subTracks: [],
+  })
+  let mediaInfo = getDefaultMediaInfo()
+
   onLocationChange(({ path }) => {
     searchOpen = path === '/search'
     settingsOpen = path === '/settings'
@@ -168,6 +177,19 @@
 
       case 'start':
         playingMedia = data.location
+      case 'media-info':
+        mediaInfo.activeAudioTrack = data.activeAudioTrack
+        mediaInfo.activeSubTrack = data.activeSubTrack
+        mediaInfo.audioTracks = data.audioTracks
+        mediaInfo.subTracks = data.subTracks
+        break
+
+      case 'aid':
+        mediaInfo.activeAudioTrack = data.value
+        break
+
+      case 'sid':
+        mediaInfo.activeSubTrack = data.value
         break
 
       case 'position':
@@ -199,6 +221,7 @@
       case 'stop':
         playingMedia = undefined
         mediaPosition = undefined
+        mediaInfo = getDefaultMediaInfo()
         // TODO: only refresh media that stopped
         sendMessage({ type: 'media-list' })
         break
@@ -405,8 +428,10 @@
     {#if settingsOpen}
       <Settings
         bind:sortOrder
+        bind:mediaInfo
         onMessage={onMessage}
         sendMessage={sendMessage}
+        playingMedia={playingMedia}
        />
     {/if}
     {#if !searchOpen}

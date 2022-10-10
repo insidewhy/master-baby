@@ -206,12 +206,40 @@ function broadcast(app: WebsocketApp, data: object) {
   })
 }
 
+const startPrefix = 'start: '
+const positionPrefix = 'position: '
+const endPrefix = 'end: '
+const pausePrefix = 'pause: '
+const audioPrefix = 'audio: '
+const activeAudioPrefix = 'active-audio: '
+const subPrefix = 'sub: '
+const activeSubPrefix = 'active-sub: '
+
+class MediaInfo {
+  activeAudioTrack: string
+  audioTracks: Array<readonly [string, string]>
+  activeSubTrack: string
+  subTracks: Array<readonly [string, string]>
+
+  constructor() {
+    this.activeAudioTrack = 'unknown'
+    this.audioTracks = []
+    this.activeSubTrack = 'unknown'
+    this.subTracks = []
+  }
+}
+
+let mediaInfo = new MediaInfo()
+
 async function spawnBabies(app: WebsocketApp): Promise<void> {
   running = spawn('babies', ['n', queueDir], {
     stdio: ['pipe', 'pipe', 'inherit'],
   })
 
   let mediaFinished = false
+  let started = false
+  mediaInfo = new MediaInfo()
+
   running.stdout!.on('data', (data: Buffer) => {
     const lines = data.toString()
 
@@ -220,25 +248,91 @@ async function spawnBabies(app: WebsocketApp): Promise<void> {
       .split('\n')
       .forEach((line) => {
         line = line.trimRight()
-        if (line.startsWith('start: ')) {
+        if (line.startsWith(subPrefix)) {
+          const subParts = line.slice(subPrefix.length).split(',', 2) as [
+            string,
+            string,
+          ]
+          if (
+            !mediaInfo.subTracks.find((subTrack) => subTrack[0] === subParts[0])
+          ) {
+            mediaInfo.subTracks.push(subParts)
+          }
+        } else if (line.startsWith(activeSubPrefix)) {
+          const subParts = line.slice(activeSubPrefix.length).split(',', 2) as [
+            string,
+            string,
+          ]
+          if (
+            !mediaInfo.subTracks.find((subTrack) => subTrack[0] === subParts[0])
+          ) {
+            mediaInfo.subTracks.push(subParts)
+          }
+          mediaInfo.activeSubTrack = subParts[0]
+          if (started) {
+            broadcast(app, {
+              type: 'sid',
+              value: mediaInfo.activeSubTrack,
+            })
+          }
+        } else if (line.startsWith(audioPrefix)) {
+          const audioParts = line.slice(audioPrefix.length).split(',', 2) as [
+            string,
+            string,
+          ]
+          if (
+            !mediaInfo.audioTracks.find(
+              (audioTrack) => audioTrack[0] === audioParts[0],
+            )
+          ) {
+            mediaInfo.audioTracks.push(audioParts)
+          }
+        } else if (line.startsWith(activeAudioPrefix)) {
+          const audioParts = line
+            .slice(activeAudioPrefix.length)
+            .split(',', 2) as [string, string]
+
+          if (
+            !mediaInfo.audioTracks.find(
+              (audioTrack) => audioTrack[0] === audioParts[0],
+            )
+          ) {
+            mediaInfo.audioTracks.push(audioParts)
+          }
+          mediaInfo.activeAudioTrack = audioParts[0]
+
+          if (started) {
+            broadcast(app, {
+              type: 'aid',
+              value: mediaInfo.activeAudioTrack,
+            })
+          }
+        } else if (line.startsWith(startPrefix)) {
+          started = true
           paused = false
-          playingMedia = basenameOfFile(line.slice(7))
+          playingMedia = basenameOfFile(line.slice(startPrefix.length))
           broadcast(app, {
             type: 'start',
             location: playingMedia,
+            activeSubTrack: mediaInfo.activeSubTrack,
+            subTracks: mediaInfo.subTracks,
+            activeAudioTrack: mediaInfo.activeAudioTrack,
+            audioTracks: mediaInfo.audioTracks,
           })
-        } else if (line.startsWith('position: ')) {
-          const [position, duration] = line.slice(10).split('/')
+        } else if (line.startsWith(positionPrefix)) {
+          const [position, duration] = line
+            .slice(positionPrefix.length)
+            .split('/')
           mediaPosition = { position, duration }
           broadcast(app, {
             type: 'position',
             position,
             duration,
           })
-        } else if (line.startsWith('end: ')) {
-          const [position, duration] = line.slice(5).split('/')
+        } else if (line.startsWith(endPrefix)) {
+          const [position, duration] = line.slice(endPrefix.length).split('/')
           mediaFinished = position === duration
-        } else if (line.startsWith('pause: ')) {
+        } else if (line.startsWith(pausePrefix)) {
           if (line.endsWith('paused')) {
             paused = true
             broadcast(app, { type: 'paused' })
@@ -365,9 +459,29 @@ async function listenToSocket(
         running?.stdin?.write('9\n')
         break
 
+      case 'set-aid':
+        running?.stdin?.write(`aid ${payload.value}\n`)
+        break
+
+      case 'set-sid':
+        running?.stdin?.write(`sid ${payload.value}\n`)
+        break
+
       case 'search':
         const { terms, duration, service } = payload
         sendSearch(ctxt, terms, service, { duration })
+        break
+
+      case 'get-media-info':
+        if (running) {
+          broadcast(app, {
+            type: 'media-info',
+            activeSubTrack: mediaInfo.activeSubTrack,
+            subTracks: mediaInfo.subTracks,
+            activeAudioTrack: mediaInfo.activeAudioTrack,
+            audioTracks: mediaInfo.audioTracks,
+          })
+        }
         break
 
       default:
