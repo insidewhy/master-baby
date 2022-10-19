@@ -451,6 +451,10 @@ async function listenToSocket(
         running?.stdin?.write('p\n')
         break
 
+      case 'stop':
+        running?.stdin?.write('q\n')
+        break
+
       case 'volume-up':
         running?.stdin?.write('0\n')
         break

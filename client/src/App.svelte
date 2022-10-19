@@ -8,6 +8,7 @@
   import FaTimes from 'svelte-icons/fa/FaTimes.svelte'
   import FaPause from 'svelte-icons/fa/FaPause.svelte'
   import FaPlay from 'svelte-icons/fa/FaPlay.svelte'
+  import FaStop from 'svelte-icons/fa/FaStop.svelte'
 
   import QueuedMedia from './QueuedMedia.svelte'
   import QueueControls from './QueueControls.svelte'
@@ -441,6 +442,9 @@
         <button on:click={() => sendMessageWithType('toggle-pause')}><FaPause /></button>
       {/if}
       {#if playingMedia}
+        <button on:click={() => { sendMessageWithType("stop") }}>
+          <FaStop />
+        </button>
         <button on:click={() => { sendMessageWithType("volume-down") }}>
           <FaVolumeDown />
         </button>
