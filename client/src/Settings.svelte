@@ -104,14 +104,16 @@
       <option value="mtime">Last Modified</option>
     </select>
   </label>
-  <label>
-    Display:
-    <select bind:value={currentDisplay}>
-      {#each displays as display}
-        <option>{display}</option>
-      {/each}
-    </select>
-  </label>
+  {#if displays.length > 1}
+    <label>
+      Display:
+      <select bind:value={currentDisplay}>
+        {#each displays as display}
+          <option>{display}</option>
+        {/each}
+      </select>
+    </label>
+  {/if}
   {#if mediaInfo.audioTracks.length > 1}
     <label>
       Audio:
