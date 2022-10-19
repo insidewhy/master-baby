@@ -6,7 +6,6 @@
   export let sendMessage
   export let onMessage
   export let mediaInfo
-  export let playingMedia
 
   let displays = ['unknown']
   let currentDisplay = 'unknown'
@@ -20,14 +19,6 @@
     prevActiveAudioTrack = mediaInfo.activeAudioTrack
     prevActiveSubTrack = mediaInfo.activeSubTrack
   })
-
-  const getMediaInfo = () => {
-    if (playingMedia && !mediaInfo.subTracks.length && !mediaInfo.audioTracks.length) {
-      sendMessage({ type: 'get-media-info' })
-    }
-  }
-
-  $: playingMedia, getMediaInfo()
 
   const setActiveSubTrack = () => {
     if (

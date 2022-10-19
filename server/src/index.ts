@@ -16,7 +16,6 @@ const defaultMediaDir = `${process.env.HOME}/shows`
 let running: ChildProcess | undefined
 let paused = false
 let playingMedia: string | undefined
-let mediaPosition: { position: string; duration: string } | undefined
 
 const queueDir = pathJoin(xdgData!, 'master-baby', 'queue')
 const queueFile = pathJoin(queueDir, '.videos.yaml')
@@ -126,7 +125,6 @@ async function sendMediaList(
     JSON.stringify({
       type: 'media',
       playing: playingMedia,
-      position: mediaPosition,
       paused,
       list: media.map((mediaFile) => ({
         path: basename(mediaFile.path),
@@ -206,6 +204,7 @@ function broadcast(app: WebsocketApp, data: object) {
   })
 }
 
+const posPrefix = 'pos: '
 const startPrefix = 'start: '
 const positionPrefix = 'position: '
 const endPrefix = 'end: '
@@ -220,19 +219,32 @@ class MediaInfo {
   audioTracks: Array<readonly [string, string]>
   activeSubTrack: string
   subTracks: Array<readonly [string, string]>
+  pos: number
+  duration: number
 
   constructor() {
     this.activeAudioTrack = 'unknown'
     this.audioTracks = []
     this.activeSubTrack = 'unknown'
     this.subTracks = []
+    this.pos = 0
+    this.duration = 0
   }
 }
 
 let mediaInfo = new MediaInfo()
 
+function timeToSeconds(time: string): number {
+  const [hours, minutes, seconds] = time.split(':')
+  return (
+    Math.round(parseFloat(seconds)) +
+    parseInt(minutes) * 60 +
+    parseInt(hours) * 3_600
+  )
+}
+
 async function spawnBabies(app: WebsocketApp): Promise<void> {
-  running = spawn('babies', ['n', queueDir], {
+  running = spawn('babies', ['n', '-p', queueDir], {
     stdio: ['pipe', 'pipe', 'inherit'],
   })
 
@@ -248,7 +260,10 @@ async function spawnBabies(app: WebsocketApp): Promise<void> {
       .split('\n')
       .forEach((line) => {
         line = line.trimRight()
-        if (line.startsWith(subPrefix)) {
+        if (line.startsWith(posPrefix)) {
+          const value = parseInt(line.slice(posPrefix.length))
+          broadcast(app, { type: 'pos', value })
+        } else if (line.startsWith(subPrefix)) {
           const subParts = line.slice(subPrefix.length).split(',', 2) as [
             string,
             string,
@@ -311,6 +326,13 @@ async function spawnBabies(app: WebsocketApp): Promise<void> {
           started = true
           paused = false
           playingMedia = basenameOfFile(line.slice(startPrefix.length))
+        } else if (line.startsWith(positionPrefix)) {
+          const [position, duration] = line
+            .slice(positionPrefix.length)
+            .split('/')
+          mediaInfo.duration = timeToSeconds(duration)
+          mediaInfo.pos = timeToSeconds(position)
+
           broadcast(app, {
             type: 'start',
             location: playingMedia,
@@ -318,16 +340,8 @@ async function spawnBabies(app: WebsocketApp): Promise<void> {
             subTracks: mediaInfo.subTracks,
             activeAudioTrack: mediaInfo.activeAudioTrack,
             audioTracks: mediaInfo.audioTracks,
-          })
-        } else if (line.startsWith(positionPrefix)) {
-          const [position, duration] = line
-            .slice(positionPrefix.length)
-            .split('/')
-          mediaPosition = { position, duration }
-          broadcast(app, {
-            type: 'position',
-            position,
-            duration,
+            pos: mediaInfo.pos,
+            duration: mediaInfo.duration,
           })
         } else if (line.startsWith(endPrefix)) {
           const [position, duration] = line.slice(endPrefix.length).split('/')
@@ -355,7 +369,6 @@ async function spawnBabies(app: WebsocketApp): Promise<void> {
         complete: mediaFinished,
       })
       playingMedia = undefined
-      mediaPosition = undefined
 
       if (mediaFinished) {
         // watch the next media if there is one
@@ -484,6 +497,8 @@ async function listenToSocket(
             subTracks: mediaInfo.subTracks,
             activeAudioTrack: mediaInfo.activeAudioTrack,
             audioTracks: mediaInfo.audioTracks,
+            pos: mediaInfo.pos,
+            duration: mediaInfo.duration,
           })
         }
         break

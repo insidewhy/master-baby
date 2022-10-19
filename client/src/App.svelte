@@ -15,12 +15,13 @@
   import Search from './Search.svelte'
   import Settings from './Settings.svelte'
   import Loading from './Loading.svelte'
+  import MediaPosition from './MediaPosition.svelte'
   import { onLocationChange, setLocation } from './location.js'
-  import { shortenTime } from './format.js'
+  import { shortenTime, secondsToTime } from './format.js'
 
   let ws
   let playingMedia
-  let mediaPosition
+  let startMediaPosition
   let mediaList = []
   let queue = []
   let queueTitles
@@ -43,6 +44,8 @@
     audioTracks: [],
     activeSubTrack: 'unknown',
     subTracks: [],
+    pos: 0,
+    duration: 0,
   })
   let mediaInfo = getDefaultMediaInfo()
 
@@ -61,6 +64,14 @@
       ws.send(JSON.stringify(message))
     }
   }
+
+  const getMediaInfo = () => {
+    if (playingMedia && !mediaInfo.subTracks.length && !mediaInfo.audioTracks.length) {
+      sendMessage({ type: 'get-media-info' })
+    }
+  }
+
+  $: playingMedia, getMediaInfo()
 
   const startMedia = (path, title) => {
     const message = { type: 'enqueue', path }
@@ -160,29 +171,45 @@
     onMessage.emit(data)
 
     switch (data.type) {
-      case 'media': {
+      case 'pos':
+        mediaInfo.pos = data.value
+        break
+
+      case 'media':
         queueTitles = new Set()
         playingMedia = data.playing
-        if (data.position) {
-          mediaPosition = {
-            position: shortenTime(data.position.position),
-            duration: shortenTime(data.position.duration),
-          }
-        }
         paused = data.paused
         queue = data.queue.map(processQueueEntry)
         mediaList = sortMediaList(data.list)
         updateMediaQueueState()
         break
-      }
 
       case 'start':
         playingMedia = data.location
+
+        startMediaPosition = {
+          position: secondsToTime(data.pos),
+          duration: secondsToTime(data.duration),
+        }
+        if (
+          queue.some(queued => {
+            if (queued.location === playingMedia) {
+              queued.position = startMediaPosition.position
+              queued.duration = startMediaPosition.duration
+              return true
+            }
+          })
+        ) {
+          queue = queue
+        }
+
       case 'media-info':
         mediaInfo.activeAudioTrack = data.activeAudioTrack
         mediaInfo.activeSubTrack = data.activeSubTrack
         mediaInfo.audioTracks = data.audioTracks
         mediaInfo.subTracks = data.subTracks
+        mediaInfo.duration = data.duration
+        mediaInfo.pos = data.pos
         break
 
       case 'aid':
@@ -191,24 +218,6 @@
 
       case 'sid':
         mediaInfo.activeSubTrack = data.value
-        break
-
-      case 'position':
-        mediaPosition = {
-          position: shortenTime(data.position),
-          duration: shortenTime(data.duration)
-        }
-        if (
-          queue.some(queued => {
-            if (queued.location === playingMedia) {
-              queued.position = shortenTime(data.position)
-              queued.duration =  shortenTime(data.duration)
-              return true
-            }
-          })
-        ) {
-          queue = queue
-        }
         break
 
       case 'paused':
@@ -221,7 +230,7 @@
 
       case 'stop':
         playingMedia = undefined
-        mediaPosition = undefined
+        startMediaPosition = undefined
         mediaInfo = getDefaultMediaInfo()
         // TODO: only refresh media that stopped
         sendMessage({ type: 'media-list' })
@@ -402,13 +411,13 @@
           class:queued={media.isQueued}
         >
           <span>{media.location}</span>
-          {#if playingMedia === media.location && mediaPosition}
+          {#if playingMedia === media.location && startMediaPosition}
             <span class="duration">
-              {#if mediaPosition.position}
-                {mediaPosition.position} /
+              {#if startMediaPosition.position}
+                {startMediaPosition.position} /
               {/if}
 
-              {mediaPosition.duration}
+              {startMediaPosition.duration}
             </span>
           {/if}
       {/each}
@@ -416,6 +425,12 @@
   {/if}
 </ul>
 <footer>
+  {#if playingMedia}
+    <MediaPosition
+      pos={mediaInfo.pos}
+      duration={mediaInfo.duration}
+    />
+  {/if}
   {#if queueSelections.size}
     <QueueControls
       onMessage={onMessage}
@@ -432,7 +447,6 @@
         bind:mediaInfo
         onMessage={onMessage}
         sendMessage={sendMessage}
-        playingMedia={playingMedia}
        />
     {/if}
     {#if !searchOpen}
