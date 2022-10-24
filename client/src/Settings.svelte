@@ -1,11 +1,13 @@
-<script>
+<script lang="ts">
+  import type { EventEmitter } from 'event-emitters'
   import { onMount } from 'svelte'
-  import { handleMessages } from './handleMessages.js'
+  import { handleMessages } from './handleMessages'
+  import type { MediaInfo } from './media'
 
-  export let sortOrder
-  export let sendMessage
-  export let onMessage
-  export let mediaInfo
+  export let sortOrder: string
+  export let sendMessage: (data: object) => void
+  export let onMessage: EventEmitter<any>;
+  export let mediaInfo: MediaInfo
 
   let displays = ['unknown']
   let currentDisplay = 'unknown'
@@ -45,7 +47,7 @@
   $: mediaInfo.activeSubTrack, setActiveSubTrack()
   $: mediaInfo.activeAudioTrack, setActiveAudioTrack()
 
-  handleMessages(onMessage, (data) => {
+  handleMessages(onMessage, (data: any) => {
     if (data.type === 'displays') {
       displays = data.displays
       currentDisplay = data.current

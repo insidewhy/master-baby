@@ -1,6 +1,6 @@
-<script>
-  export let pos
-  export let duration
+<script lang="ts">
+  export let pos: number
+  export let duration: number
 </script>
 
 <style lang="scss">

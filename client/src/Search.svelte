@@ -1,16 +1,17 @@
-<script>
+<script lang="ts">
+  import type { EventEmitter } from 'event-emitters'
   import FaSearch from 'svelte-icons/fa/FaSearch.svelte'
   import FaTimes from 'svelte-icons/fa/FaTimes.svelte'
   import FaSpinner from 'svelte-icons/fa/FaSpinner.svelte'
   import FaYoutube from 'svelte-icons/fa/FaYoutube.svelte'
   import FaSpotify from 'svelte-icons/fa/FaSpotify.svelte'
-  import { handleMessages } from './handleMessages.js'
-  import { setLocation, onLocationChange } from './location.js'
+  import { handleMessages } from './handleMessages'
+  import { setLocation, onLocationChange } from './location'
 
-  export let sendMessage
-  export let onSearchResults
-  export let onMessage
-  export let searchService
+  export let sendMessage: (data: object) => void;
+  export let onSearchResults: (results: unknown[]) => void;
+  export let onMessage: EventEmitter<any>
+  export let searchService: string
 
   let searching = false
   let searchTerms = ''
@@ -40,14 +41,14 @@
     }
   })
 
-  handleMessages(onMessage, (data) => {
+  handleMessages(onMessage, (data: any) => {
     if (data.type === 'search-results') {
       searching = false
       onSearchResults(data.results)
     }
   })
 
-  const focus = (el) => {
+  const focus = (el: HTMLElement) => {
     el.focus()
   }
 

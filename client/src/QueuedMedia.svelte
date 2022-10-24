@@ -1,9 +1,11 @@
-<script>
-  export let watching
-  export let queued
-  export let queueSelections
+<script lang="ts">
+  import type { Media } from "./media"
 
-  const onClickQueueEntry = queueEntry => {
+  export let watching: boolean
+  export let queued: Media
+  export let queueSelections: Set<string>
+
+  const onClickQueueEntry = () => {
     if (queueSelections.has(queued.location)) {
       queueSelections.delete(queued.location)
     } else {

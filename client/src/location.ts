@@ -1,9 +1,14 @@
 import { EventEmitter } from 'event-emitters'
 import { onMount, onDestroy } from 'svelte'
 
-const locationEmitter = new EventEmitter()
+interface LocationInfo {
+  path: string
+  params: Record<string, string>
+}
 
-const getCurrentLocation = () => {
+const locationEmitter = new EventEmitter<LocationInfo>()
+
+const getCurrentLocation = (): LocationInfo => {
   const path = decodeURIComponent(window.location.pathname)
   const { search } = window.location
   const params = {}
@@ -19,13 +24,15 @@ const getCurrentLocation = () => {
   return { path, params }
 }
 
-const emitCurrentLocation = () => {
+const emitCurrentLocation = (): void => {
   locationEmitter.emit(getCurrentLocation())
 }
 
 window.addEventListener('popstate', emitCurrentLocation)
 
-export function onLocationChange(handler) {
+export function onLocationChange(
+  handler: (locationInfo: LocationInfo) => void,
+) {
   handler(getCurrentLocation())
 
   onMount(() => {
@@ -37,7 +44,7 @@ export function onLocationChange(handler) {
   })
 }
 
-export function setLocation(path, params) {
+export function setLocation(path: string, params: Record<string, string>) {
   const url =
     path +
     (!params

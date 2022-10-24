@@ -1,16 +1,17 @@
-<script>
+<script lang="ts">
+  import type { EventEmitter } from 'event-emitters'
   import FaTrash from 'svelte-icons/fa/FaTrash.svelte'
 
-  import { handleMessages } from './handleMessages.js'
+  import { handleMessages } from './handleMessages'
   import Loading from './Loading.svelte'
 
-  export let selections
-  export let sendMessage
-  export let onMessage
+  export let selections: Set<string>
+  export let sendMessage: (data: object) => void
+  export let onMessage: EventEmitter<any>
 
   let pendingOperation = false
 
-  handleMessages(onMessage, (data) => {
+  handleMessages(onMessage, (data: any) => {
     if (data.type === 'dequeued') {
       pendingOperation = false
       selections.clear()

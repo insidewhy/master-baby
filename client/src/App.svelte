@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
   import { EventEmitter } from 'event-emitters'
   import FaListOl from 'svelte-icons/fa/FaListOl.svelte'
   import FaVolumeDown from 'svelte-icons/fa/FaVolumeDown.svelte'
@@ -16,19 +16,25 @@
   import Settings from './Settings.svelte'
   import Loading from './Loading.svelte'
   import MediaPosition from './MediaPosition.svelte'
-  import { onLocationChange, setLocation } from './location.js'
-  import { shortenTime, secondsToTime } from './format.js'
+  import { onLocationChange, setLocation } from './location'
+  import { shortenTime, secondsToTime } from './format'
+  import { getDefaultMediaInfo, type Media } from './media'
 
-  let ws
-  let playingMedia
-  let startMediaPosition
-  let mediaList = []
+  interface IncomingMessage {
+    type: string;
+    data: string;
+  }
+
+  let ws: WebSocket
+  let playingMedia: string
+  let startMediaPosition: { duration: string, position: string }
+  let mediaList: Media[] = []
   let queue = []
-  let queueTitles
-  let queueSelections = new Set()
+  let queueTitles: Set<string>
+  let queueSelections = new Set<string>()
   // youtube or spotify
   let searchService = 'youtube'
-  const onMessage = new EventEmitter()
+  const onMessage = new EventEmitter<any>()
 
   // search binds
   let searchOpen = false
@@ -38,15 +44,6 @@
   let searchResults = []
   let sortOrder = window.localStorage.getItem('sortOrder') ?? 'location'
 
-  // audio/sub tracks
-  const getDefaultMediaInfo = () => ({
-    activeAudioTrack: 'unknown',
-    audioTracks: [],
-    activeSubTrack: 'unknown',
-    subTracks: [],
-    pos: 0,
-    duration: 0,
-  })
   let mediaInfo = getDefaultMediaInfo()
 
   onLocationChange(({ path }) => {
@@ -59,7 +56,7 @@
     queueOpen = nextQueueOpen
   })
 
-  const sendMessage = (message) => {
+  const sendMessage = (message: object) => {
     if (ws) {
       ws.send(JSON.stringify(message))
     }
@@ -73,15 +70,15 @@
 
   $: playingMedia, getMediaInfo()
 
-  const startMedia = (path, title) => {
-    const message = { type: 'enqueue', path }
+  const startMedia = (path: string, title?: string) => {
+    const message: { type: string, path: string, title?: string } = { type: 'enqueue', path }
     if (title) {
       message.title = title
     }
     sendMessage(message)
   }
 
-  const sendMessageWithType = type => {
+  const sendMessageWithType = (type: string) => {
     sendMessage({ type })
   }
 
@@ -93,7 +90,7 @@
     }
   }
 
-  const processQueueEntry = (media) => {
+  const processQueueEntry = (media: Media) => {
     const { title, location } = media
     const displayTitle = title || (location.startsWith('https://') ? location : location.replace(/.*\//, ''))
     queueTitles.add(displayTitle)
@@ -131,19 +128,19 @@
 
   // ignore stuff at the beginning of line between square brackets, it's usually the
   // subgroup or studio
-  const getLocationSortKey = (location) => location.replace(/\[[^\]]+\]\s+/, '').toLowerCase()
+  const getLocationSortKey = (location: string) => location.replace(/\[[^\]]+\]\s+/, '').toLowerCase()
 
-  const compareLocations = (a, b) => {
+  const compareLocations = (a: Media, b: Media) => {
     const aLocation = getLocationSortKey(a.location)
     const bLocation = getLocationSortKey(b.location)
     return aLocation < bLocation ? -1 : 1
   }
 
-  const sortMediaList = (mediaList) => {
+  const sortMediaList = (mediaList: Media[]) => {
     if (sortOrder === 'mtime') {
       return mediaList.sort((a, b) => {
         if (a.mtime) {
-          return b.mtime ? b.mtime - a.mtime : -1;
+          return b.mtime ? b.mtime - a.mtime : -1
         } else if (b.mtime) {
           return -1
         } else {
@@ -166,7 +163,7 @@
 
   $: sortOrder, updateSortOrder()
 
-  const handleWebsocketMessage = (message) => {
+  const handleWebsocketMessage = (message: IncomingMessage) => {
     const data = JSON.parse(message.data)
     onMessage.emit(data)
 
@@ -237,7 +234,7 @@
         break
 
       case 'enqueued': {
-        const { type, media } = data
+        const { media } = data
         const newEntry = processQueueEntry(media)
         queue = [...queue, newEntry]
 
@@ -277,7 +274,7 @@
     }
   }
 
-  const setSearchResults = newResults => {
+  const setSearchResults = (newResults: unknown[]) => {
     searchResults = newResults
     updateSearchResultQueueState()
   }
@@ -333,7 +330,7 @@
     flex-direction: column;
     overflow-y: scroll;
 
-    :global(> li) {
+    > :global(li) {
       width: 100%;
       align-items: center;
       word-break: break-word;
@@ -354,12 +351,11 @@
       }
     }
 
-    :global(> li .duration) {
+    > :global(li .duration) {
       margin-left: auto;
       white-space: nowrap;
       padding-left: 0.7em;
     }
-
   }
 
   footer {
