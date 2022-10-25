@@ -476,6 +476,10 @@ async function listenToSocket(
         running?.stdin?.write('9\n')
         break
 
+      case 'seek':
+        running?.stdin?.write(`seek ${payload.value}\n`)
+        break
+
       case 'set-aid':
         running?.stdin?.write(`aid ${payload.value}\n`)
         break

@@ -423,14 +423,15 @@
 <footer>
   {#if playingMedia}
     <MediaPosition
+      {sendMessage}
       pos={mediaInfo.pos}
       duration={mediaInfo.duration}
     />
   {/if}
   {#if queueSelections.size}
     <QueueControls
-      onMessage={onMessage}
-      sendMessage={sendMessage}
+      {onMessage}
+      {sendMessage}
       bind:selections={queueSelections}
     />
   {/if}
@@ -441,8 +442,8 @@
       <Settings
         bind:sortOrder
         bind:mediaInfo
-        onMessage={onMessage}
-        sendMessage={sendMessage}
+        {onMessage}
+        {sendMessage}
        />
     {/if}
     {#if !searchOpen}
@@ -467,8 +468,8 @@
     {#if searchOpen}
       <Search
         bind:searchService={searchService}
-        sendMessage={sendMessage}
-        onMessage={onMessage}
+        {sendMessage}
+        {onMessage}
         onSearchResults={setSearchResults}
       />
     {:else}

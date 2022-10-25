@@ -44,7 +44,7 @@ export function onLocationChange(
   })
 }
 
-export function setLocation(path: string, params: Record<string, string>) {
+export function setLocation(path: string, params?: Record<string, string>) {
   const url =
     path +
     (!params
